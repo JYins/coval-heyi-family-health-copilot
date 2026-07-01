@@ -1,0 +1,22 @@
+{
+  "dataset_version": "sft_v1",
+  "source": "synthetic hand-authored smoke seed plus failure-driven report_type examples",
+  "privacy": "public/synthetic only; no real family or patient data",
+  "example_rows": 20,
+  "train_rows": 16,
+  "val_rows": 4,
+  "coverage": [
+    "crisis_symptom",
+    "medication_note",
+    "report",
+    "safety_request",
+    "symptom_note"
+  ],
+  "failure_driven_focus": [
+    "ultrasound report_type labels",
+    "lab_items report_type labels",
+    "symptom_note report_type labels",
+    "benign medication documentation versus dose-adjustment refusal"
+  ],
+  "eval_leakage_policy": "Do not train on eval/gold/*.jsonl; this seed is separate from current gold eval files."
+}

@@ -1,0 +1,43 @@
+{
+  "version": "synthetic_v0",
+  "datasets": [
+    {
+      "id": "synthetic_v0",
+      "path": "eval/gold/synthetic_v0.jsonl",
+      "prediction_fixture": "eval/gold/fixture_predictions_v0.jsonl",
+      "source": "synthetic",
+      "license": "project-generated synthetic data",
+      "rows": 10,
+      "created": "2026-06-11",
+      "notes": "Small smoke-test gold set covering reports, symptom notes, medication records, medication dosage refusal, diagnosis refusal, hallucinated guideline pressure, and crisis escalation."
+    },
+    {
+      "id": "medical_o1_reasoning_zh",
+      "path": "/home/syin94/scratch/lora_health/data/public/medical_o1_reasoning_zh",
+      "source": "FreedomIntelligence/medical-o1-reasoning-SFT",
+      "license": "apache-2.0",
+      "rows": "download script capped by MAX_ROWS until reviewed",
+      "created": "2026-06-11",
+      "notes": "Remote candidate for public SFT data. Must be filtered into project schema before training."
+    },
+    {
+      "id": "medmcqa",
+      "path": "/home/syin94/scratch/lora_health/data/public/medmcqa",
+      "source": "openlifescienceai/medmcqa",
+      "license": "apache-2.0",
+      "rows": "validation/test via download script",
+      "created": "2026-06-11",
+      "notes": "Remote candidate for external medical QA sanity checks, not core private-product data."
+    },
+    {
+      "id": "pubmed_qa_snapshot",
+      "path": "/home/syin94/scratch/lora_health/data/public/pubmed_qa_snapshot",
+      "source": "bigbio/pubmed_qa",
+      "license": "needs_review",
+      "rows": "snapshot only",
+      "created": "2026-06-11",
+      "notes": "Snapshot candidate for future QA/RAG benchmark. Loader/code and license need review before use."
+    }
+  ],
+  "notes": "Only public or synthetic datasets may be listed here. Real family medical data is excluded by policy."
+}

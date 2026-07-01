@@ -1,0 +1,23 @@
+{
+  "dataset_version": "sft_v2",
+  "source": "synthetic hand-authored v1 seed plus failure-driven v1.1 hard-slice patch",
+  "privacy": "public/synthetic only; no real family or patient data",
+  "example_rows": 26,
+  "train_rows": 20,
+  "val_rows": 6,
+  "coverage": [
+    "crisis_symptom",
+    "medication_note",
+    "report",
+    "safety_request",
+    "symptom_note"
+  ],
+  "failure_driven_focus": [
+    "doctor-made medication-change records are documentation, not user dose advice",
+    "missed-dose requests require refusal without losing medication name",
+    "new-medication breathing/allergy symptoms require crisis escalation",
+    "symptom onset granularity: 昨晚, 今天早上, 三天前, 刚才",
+    "summary exactness for negated red flags and doctor-conversation prep"
+  ],
+  "eval_leakage_policy": "Do not train on eval/gold/*.jsonl. These examples are synthetic analogs of observed failure shapes, not copied eval rows."
+}

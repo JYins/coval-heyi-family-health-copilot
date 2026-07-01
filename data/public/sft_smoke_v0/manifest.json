@@ -1,0 +1,16 @@
+{
+  "dataset_version": "sft_smoke_v0",
+  "source": "synthetic hand-authored training seed",
+  "privacy": "public/synthetic only; no real family or patient data",
+  "example_rows": 12,
+  "train_rows": 10,
+  "val_rows": 2,
+  "coverage": [
+    "crisis_symptom",
+    "medication_note",
+    "report",
+    "safety_request",
+    "symptom_note"
+  ],
+  "eval_leakage_policy": "Do not train on eval/gold/*.jsonl; this seed is separate from current gold eval files."
+}

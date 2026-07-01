@@ -1,0 +1,30 @@
+# Public/synthetic dataset candidates only.
+# License and schema must be reviewed before any training run.
+datasets:
+  - id: medical_o1_reasoning_zh
+    hf_id: FreedomIntelligence/medical-o1-reasoning-SFT
+    configs: [zh, zh_mix]
+    splits: [train]
+    license: apache-2.0
+    purpose: candidate_sft_source
+    use_before_review: cache_only
+    notes: Filter into the project extraction/summary schema before training.
+
+  - id: medmcqa
+    hf_id: openlifescienceai/medmcqa
+    configs: [default]
+    splits: [validation, test]
+    license: apache-2.0
+    purpose: external_benchmark
+    use_before_review: eval_only
+    notes: Use as a general medical QA sanity check, not as private-product evidence.
+
+  - id: pubmed_qa_snapshot
+    hf_id: bigbio/pubmed_qa
+    configs: [snapshot]
+    splits: [snapshot]
+    license: needs_review
+    purpose: future_rag_or_external_qa
+    use_before_review: snapshot_only
+    notes: Review loader and license before converting or using in eval.
+

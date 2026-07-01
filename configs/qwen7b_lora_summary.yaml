@@ -1,0 +1,23 @@
+﻿# Draft config. Summary fine-tuning comes after extraction baseline is measured.
+base_model: Qwen/Qwen2.5-7B-Instruct
+task: doctor_facing_summary
+training_policy: public_or_synthetic_only
+output_dir: /home/syin94/scratch/lora_health/runs/qwen7b_lora_summary
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+
+train:
+  max_seq_length: 4096
+  learning_rate: 1.0e-4
+  batch_size: 1
+  gradient_accumulation_steps: 16
+  epochs: 3
+  bf16: true
+  seed: 42
+
+eval:
+  gold_dir: eval/gold
+  metrics_output: results/lora_summary/metrics.json

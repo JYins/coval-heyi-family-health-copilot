@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+python scripts/check_workflow.py
+python eval/run_eval.py \
+  --gold eval/gold/synthetic_v0.jsonl \
+  --pred eval/gold/fixture_predictions_v0.jsonl \
+  --out results/eval_fixture_metrics.json >/dev/null
+

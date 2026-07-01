@@ -1,0 +1,81 @@
+﻿# Secrets and local credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.ppk
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+
+# Private health data: never commit real family/PII records
+data/private/
+*.real.*
+*.pii.*
+*.private.*
+*.patient.*
+*.medical-record.*
+
+# Large/generated data and model artifacts
+data/raw/
+data/cache/
+checkpoints/
+models/
+adapters/
+outputs/
+wandb/
+mlruns/
+*.pt
+*.pth
+*.safetensors
+*.ckpt
+*.bin
+*.onnx
+*.gguf
+
+# Results: keep summaries/docs, not bulky generated artifacts
+narval_logs/
+results/*.log
+results/chrome-test-profile/
+results/edge-profile/
+results/**/checkpoints/
+results/**/*.pt
+results/**/*.pth
+results/**/*.safetensors
+results/**/*.npy
+results/**/*.npz
+results/**/*.parquet
+results/remote_setup/
+results/heartbeat/
+
+# Graphify generated outputs
+graphify-out/
+
+# Local packaging and browser QA scratch
+hf_upload/
+.playwright-mcp/
+
+# Python / tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# Frontend
+node_modules/
+.next/
+dist/
+coverage/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.bak_*

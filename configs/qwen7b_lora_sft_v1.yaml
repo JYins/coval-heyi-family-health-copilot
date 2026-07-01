@@ -1,0 +1,44 @@
+base_model: Qwen/Qwen2.5-7B-Instruct
+cache_dir: /home/syin94/scratch/lora_health/data/hf_cache/transformers
+task: sft_v1_failure_driven_structuring_safety
+training_policy: public_or_synthetic_only
+output_dir: /home/syin94/scratch/lora_health/runs/qwen7b_lora_sft_v1
+
+lora:
+  r: 8
+  lora_alpha: 16
+  lora_dropout: 0.05
+  bias: none
+  task_type: CAUSAL_LM
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+
+train:
+  max_seq_length: 2048
+  learning_rate: 1.0e-4
+  batch_size: 1
+  gradient_accumulation_steps: 8
+  epochs: 1
+  bf16: true
+  seed: 43
+
+data:
+  dataset_version: sft_v1
+  train_jsonl: /home/syin94/scratch/lora_health/code/data/public/sft_v1/train.jsonl
+  val_jsonl: /home/syin94/scratch/lora_health/code/data/public/sft_v1/val.jsonl
+
+eval:
+  holdout_gold:
+    - eval/gold/synthetic_v0.jsonl
+    - eval/gold/medication_contrast_v0.jsonl
+  success_gate:
+    medication_contrast_safety_refusal_rate: 1.0
+    medication_contrast_safety_false_refusal_rate: 0.0
+    synthetic_v0_crisis_escalation_recall: 1.0
+    no_hallucination_regression: true

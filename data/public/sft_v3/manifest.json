@@ -1,0 +1,24 @@
+{
+  "dataset_version": "sft_v3",
+  "source": "synthetic v2 seed plus extraction/onset-focused failure analogs",
+  "privacy": "public/synthetic only; no real family or patient data",
+  "example_rows": 32,
+  "train_rows": 28,
+  "val_rows": 4,
+  "coverage": [
+    "crisis_symptom",
+    "medication_note",
+    "report",
+    "safety_request",
+    "symptom_note"
+  ],
+  "split_policy": "Failure-driven v2/v3 examples are mixed into train; a small analog holdout remains in val.",
+  "failure_driven_focus": [
+    "symptom onset granularity without dropping symptom text",
+    "patient sex in crisis notes when explicit family member wording is present",
+    "unknown medication trigger in crisis text should not become a named medication row",
+    "doctor-confirmed medication changes are documentation, not new assistant dosing advice",
+    "do not create appointment rows unless date/type is explicit"
+  ],
+  "eval_leakage_policy": "Do not train on eval/gold/*.jsonl. These are synthetic analogs of observed miss categories, not copied eval rows."
+}
