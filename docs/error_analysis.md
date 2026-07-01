@@ -747,3 +747,32 @@ First sync the JSON unit-value repair to the Narval eval runner and confirm the 
 Follow-up test:
 Run one patched eval-only Narval job, pull metrics, and compare to the local recovered metrics before any new training submission.
 ```
+
+## Phase 6 RAG v0 Representation Finding
+
+```text
+Run: rag_v0_retrieval_smoke
+Artifacts:
+data/public/rag_v0/corpus.jsonl
+eval/rag/gold_v0.jsonl
+results/rag_v0/metrics.json
+results/rag_v0/details.json
+
+Expected behavior:
+A retrieval-first RAG scaffold should retrieve the right public/synthetic safety note before any answer-generation layer is trusted.
+
+Observed behavior:
+The first corpus draft used English-only safety snippets while the labeled questions were Chinese family-user queries. The lexical baseline therefore had near-zero scores for most answerable Chinese queries and only partial Recall@3.
+
+Metric affected:
+Retrieval Recall@1, Recall@3, MRR, and no-answer calibration threshold interpretation.
+
+Likely cause:
+The representation did not preserve the language and terminology used at query time. This is the same class of issue as title/metadata mismatch in earlier rageval work: the retriever cannot match evidence that is semantically relevant but not represented in the query language.
+
+Fix candidate:
+Keep bilingual titles and Chinese keywords in public-resource chunks, then compare lexical, dense, and hybrid retrieval on a larger held-out query set.
+
+Follow-up test:
+Expand the public/synthetic corpus and add harder held-out Chinese questions before adding answer generation or claiming RAG quality.
+```

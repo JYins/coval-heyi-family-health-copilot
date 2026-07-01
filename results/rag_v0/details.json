@@ -1,0 +1,238 @@
+[
+  {
+    "id": "rag_q001_missed_dose",
+    "query": "家人漏服了降压药，能不能晚上一次吃两片补回来？",
+    "answerable": true,
+    "relevant_ids": [
+      "medication_missed_dose_boundary"
+    ],
+    "predicted_no_answer": false,
+    "top_score": 0.2764,
+    "retrieved": [
+      {
+        "id": "medication_missed_dose_boundary",
+        "rank": 1,
+        "score": 0.2764,
+        "title": "Medication missed-dose safety boundary / 漏服用药安全边界"
+      },
+      {
+        "id": "blood_pressure_home_log",
+        "rank": 2,
+        "score": 0.0496,
+        "title": "Daily blood pressure home log fields / 每日血压记录字段"
+      },
+      {
+        "id": "ocr_review_provenance",
+        "rank": 3,
+        "score": 0.0255,
+        "title": "OCR report intake and review / OCR 报告识别与核对"
+      }
+    ]
+  },
+  {
+    "id": "rag_q002_crisis",
+    "query": "记录里写胸痛和呼吸困难，家庭助手应该怎么处理？",
+    "answerable": true,
+    "relevant_ids": [
+      "crisis_red_flags_home_boundary"
+    ],
+    "predicted_no_answer": false,
+    "top_score": 0.0964,
+    "retrieved": [
+      {
+        "id": "crisis_red_flags_home_boundary",
+        "rank": 1,
+        "score": 0.0964,
+        "title": "Crisis red flags and home-assistant boundary / 危急症状边界"
+      },
+      {
+        "id": "structured_memory_sql_boundary",
+        "rank": 2,
+        "score": 0.06,
+        "title": "Structured memory and RAG boundary / SQL 与 RAG 边界"
+      },
+      {
+        "id": "asr_voice_note_review",
+        "rank": 3,
+        "score": 0.0418,
+        "title": "ASR voice-note intake and correction / 语音转写与确认"
+      }
+    ]
+  },
+  {
+    "id": "rag_q003_bp_log",
+    "query": "每日血压记录应该保存哪些字段，方便复诊？",
+    "answerable": true,
+    "relevant_ids": [
+      "blood_pressure_home_log"
+    ],
+    "predicted_no_answer": false,
+    "top_score": 0.2917,
+    "retrieved": [
+      {
+        "id": "blood_pressure_home_log",
+        "rank": 1,
+        "score": 0.2917,
+        "title": "Daily blood pressure home log fields / 每日血压记录字段"
+      },
+      {
+        "id": "visit_prep_summary",
+        "rank": 2,
+        "score": 0.12,
+        "title": "Visit-preparation summary / 复诊沟通摘要"
+      },
+      {
+        "id": "medication_missed_dose_boundary",
+        "rank": 3,
+        "score": 0.0577,
+        "title": "Medication missed-dose safety boundary / 漏服用药安全边界"
+      }
+    ]
+  },
+  {
+    "id": "rag_q004_ocr_review",
+    "query": "OCR 识别体检报告以后能不能直接保存到时间线？",
+    "answerable": true,
+    "relevant_ids": [
+      "ocr_review_provenance"
+    ],
+    "predicted_no_answer": false,
+    "top_score": 0.337,
+    "retrieved": [
+      {
+        "id": "ocr_review_provenance",
+        "rank": 1,
+        "score": 0.337,
+        "title": "OCR report intake and review / OCR 报告识别与核对"
+      },
+      {
+        "id": "medication_missed_dose_boundary",
+        "rank": 2,
+        "score": 0.0623,
+        "title": "Medication missed-dose safety boundary / 漏服用药安全边界"
+      },
+      {
+        "id": "blood_pressure_home_log",
+        "rank": 3,
+        "score": 0.0517,
+        "title": "Daily blood pressure home log fields / 每日血压记录字段"
+      }
+    ]
+  },
+  {
+    "id": "rag_q005_asr_review",
+    "query": "语音症状记录转写以后，哪些内容需要用户确认？",
+    "answerable": true,
+    "relevant_ids": [
+      "asr_voice_note_review"
+    ],
+    "predicted_no_answer": false,
+    "top_score": 0.317,
+    "retrieved": [
+      {
+        "id": "asr_voice_note_review",
+        "rank": 1,
+        "score": 0.317,
+        "title": "ASR voice-note intake and correction / 语音转写与确认"
+      },
+      {
+        "id": "crisis_red_flags_home_boundary",
+        "rank": 2,
+        "score": 0.0907,
+        "title": "Crisis red flags and home-assistant boundary / 危急症状边界"
+      },
+      {
+        "id": "medication_missed_dose_boundary",
+        "rank": 3,
+        "score": 0.0623,
+        "title": "Medication missed-dose safety boundary / 漏服用药安全边界"
+      }
+    ]
+  },
+  {
+    "id": "rag_q006_sql_boundary",
+    "query": "过去半年做过几次血常规，这种问题应该靠 RAG 还是 SQL？",
+    "answerable": true,
+    "relevant_ids": [
+      "structured_memory_sql_boundary"
+    ],
+    "predicted_no_answer": false,
+    "top_score": 0.1445,
+    "retrieved": [
+      {
+        "id": "structured_memory_sql_boundary",
+        "rank": 1,
+        "score": 0.1445,
+        "title": "Structured memory and RAG boundary / SQL 与 RAG 边界"
+      },
+      {
+        "id": "visit_prep_summary",
+        "rank": 2,
+        "score": 0.0338,
+        "title": "Visit-preparation summary / 复诊沟通摘要"
+      },
+      {
+        "id": "blood_pressure_home_log",
+        "rank": 3,
+        "score": 0.0167,
+        "title": "Daily blood pressure home log fields / 每日血压记录字段"
+      }
+    ]
+  },
+  {
+    "id": "rag_q007_unknown_price",
+    "query": "这个药在我家附近药房多少钱？",
+    "answerable": false,
+    "relevant_ids": [],
+    "predicted_no_answer": true,
+    "top_score": 0.0763,
+    "retrieved": [
+      {
+        "id": "medication_missed_dose_boundary",
+        "rank": 1,
+        "score": 0.0763,
+        "title": "Medication missed-dose safety boundary / 漏服用药安全边界"
+      },
+      {
+        "id": "visit_prep_summary",
+        "rank": 2,
+        "score": 0.0321,
+        "title": "Visit-preparation summary / 复诊沟通摘要"
+      },
+      {
+        "id": "blood_pressure_home_log",
+        "rank": 3,
+        "score": 0.0211,
+        "title": "Daily blood pressure home log fields / 每日血压记录字段"
+      }
+    ]
+  },
+  {
+    "id": "rag_q008_unknown_insurance",
+    "query": "我妈妈的保险能不能报销这个检查？",
+    "answerable": false,
+    "relevant_ids": [],
+    "predicted_no_answer": true,
+    "top_score": 0.0694,
+    "retrieved": [
+      {
+        "id": "medication_missed_dose_boundary",
+        "rank": 1,
+        "score": 0.0694,
+        "title": "Medication missed-dose safety boundary / 漏服用药安全边界"
+      },
+      {
+        "id": "ocr_review_provenance",
+        "rank": 2,
+        "score": 0.0494,
+        "title": "OCR report intake and review / OCR 报告识别与核对"
+      },
+      {
+        "id": "visit_prep_summary",
+        "rank": 3,
+        "score": 0.0292,
+        "title": "Visit-preparation summary / 复诊沟通摘要"
+      }
+    ]
+  }
+]

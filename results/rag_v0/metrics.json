@@ -1,0 +1,12 @@
+{
+  "dataset_version": "rag_v0",
+  "corpus_size": 7,
+  "query_count": 8,
+  "answerable_count": 6,
+  "no_answer_count": 2,
+  "no_answer_threshold": 0.08,
+  "mrr": 1.0,
+  "no_answer_accuracy": 1.0,
+  "recall_at_1": 1.0,
+  "recall_at_3": 1.0
+}

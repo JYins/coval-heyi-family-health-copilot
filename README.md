@@ -118,6 +118,43 @@ See:
 - `results/sft_v2_eval_template_patch/comparison.md`
 - `results/sft_v3_eval/comparison_vs_v2_template_patch.md`
 
+## Honest Current Scope
+
+This repo is intentionally framed as an evaluation-first product prototype, not a production medical agent.
+
+- The headline LoRA result is a failure-driven small-sample SFT. `sft_v2` has 26 synthetic hand-authored rows: 20 train and 6 validation. The training loop was short, about 14.48 seconds and 3 global steps. The improvement is real in this controlled harness, but the claim is about data quality, failure targeting, and evaluation discipline rather than dataset scale.
+- The local product layer is a Next.js/FastAPI/SQLite demo over synthetic examples. It shows record structuring, timeline memory, doctor-prep summaries, safety gates, daily blood-pressure entry, OCR/ASR intake design, and weekly-report hooks.
+- It is not yet a complete RAG agent. Phase 6 has started with a retrieval-first smoke harness over a tiny synthetic/public-safe corpus: 7 source snippets, 8 labeled queries, Recall@1/3 and MRR, plus no-answer calibration.
+- It is not yet a llama.cpp/GGUF local-inference deployment. A fully local 7B adapter path is a design target and feasible packaging direction, but it should not be described as completed deployment.
+
+Safe resume wording: `Built an evaluation-first Chinese medical-record structuring system with Qwen2.5-7B LoRA, synthetic/public gold sets, safety/crisis metrics, and a local Next.js/FastAPI/SQLite family-health memory demo.`
+
+Avoid overclaiming: do not describe the current project as a large-scale medical dataset, a deployed clinical decision system, a production RAG agent, or a completed GGUF/llama.cpp local runtime.
+
+## Phase 6 RAG Status
+
+Phase 6 follows the same lesson as the earlier rageval work: retrieval quality is measured before generation is trusted.
+
+Current scaffold:
+
+- Corpus: `data/public/rag_v0/corpus.jsonl`
+- Gold queries: `eval/rag/gold_v0.jsonl`
+- Runner: `scripts/run_rag_retrieval_eval.py`
+- Metrics: `results/rag_v0/metrics.json`
+
+Current smoke result on the tiny bilingual representation set:
+
+| Metric | Value |
+| --- | ---: |
+| Corpus size | 7 |
+| Query count | 8 |
+| Recall@1 | 1.0000 |
+| Recall@3 | 1.0000 |
+| MRR | 1.0000 |
+| No-answer accuracy | 1.0000 |
+
+These numbers are only a scaffold sanity check. The next real RAG work is to expand public-resource evidence, add harder held-out queries, compare lexical/dense/hybrid retrieval, and then evaluate citation faithfulness and unsupported claims.
+
 ## Hugging Face Upload Flow
 
 Do not paste or commit tokens. Log in interactively.

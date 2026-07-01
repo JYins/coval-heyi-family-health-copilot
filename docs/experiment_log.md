@@ -1836,3 +1836,50 @@ Web demo integration on 2026-06-30:
 Next step:
 
 - Prepare public Hugging Face packaging around the v2 adapter and deterministic product-layer patch, with v3 documented as a rejected ablation rather than the model to upload as the headline.
+
+Phase 6 RAG retrieval scaffold on 2026-07-01:
+
+- Added a retrieval-first RAG smoke harness rather than a generation-first agent.
+- Added corpus: `data/public/rag_v0/corpus.jsonl`.
+- Added gold query set: `eval/rag/gold_v0.jsonl`.
+- Added runner: `scripts/run_rag_retrieval_eval.py`.
+- Added workflow coverage in `scripts/run_workflow_checks.ps1`.
+- Local command:
+  - `python scripts\run_rag_retrieval_eval.py --out results\rag_v0\metrics.json --details-out results\rag_v0\details.json`
+
+Observed first-pass finding:
+
+- English-only safety snippets failed Chinese family queries, with `recall_at_1=0.5`, `recall_at_3=0.8333`, `mrr=0.6806`, and `no_answer_accuracy=1.0`.
+- This matched the rageval lesson that representation and metadata matter before changing models.
+
+Patch:
+
+- Converted the tiny corpus into a bilingual/title-aware representation with Chinese keywords while keeping it synthetic/public-safe.
+
+Current smoke metrics:
+
+- Corpus size: `7`.
+- Query count: `8`.
+- Answerable queries: `6`.
+- No-answer queries: `2`.
+- Recall@1: `1.0`.
+- Recall@3: `1.0`.
+- MRR: `1.0`.
+- No-answer accuracy: `1.0`.
+
+Narval CPU reproduction:
+
+- WSL ControlMaster was active.
+- Ran the same retrieval smoke under `/home/syin94/scratch/lora_health/code` using `/home/syin94/scratch/lora_health/venv/bin/python`.
+- No Slurm/A100 job was needed.
+- Remote metrics matched local metrics: Recall@1 `1.0`, Recall@3 `1.0`, MRR `1.0`, no-answer accuracy `1.0`.
+
+Interpretation:
+
+- This only proves the Phase 6 metric contract and retrieval smoke path. It is not a production RAG benchmark.
+- The project is still best described as `micro-SFT + SQLite health memory + FastAPI/Next.js demo + eval-first safety/structuring harness`.
+- Do not claim completed llama.cpp/GGUF local inference or a full RAG agent.
+
+Next step:
+
+- Expand `rag_v0` into a larger public-resource evidence set with held-out queries, compare lexical/dense/hybrid retrieval, then add citation faithfulness and unsupported-claim metrics before any answer generation.

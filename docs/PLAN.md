@@ -156,6 +156,8 @@ Exit criteria:
 
 Use the existing rageval lesson: retrieval evaluation first, generation second.
 
+Status: scaffold started. The first `rag_v0` retrieval smoke uses a tiny synthetic/public-safe bilingual corpus and a labeled query set to validate the metric contract before any generation layer.
+
 Planned metrics:
 
 - Recall@K and MRR for evidence retrieval.
@@ -167,3 +169,16 @@ Design principle:
 
 - Structured health memory stays in SQL.
 - RAG is for cited explanations over public resources, not for counting a patient’s historical lab tests.
+
+Current artifacts:
+
+- Corpus: `data/public/rag_v0/corpus.jsonl`
+- Gold queries: `eval/rag/gold_v0.jsonl`
+- Runner: `scripts/run_rag_retrieval_eval.py`
+- Metrics: `results/rag_v0/metrics.json`
+
+Current limitations:
+
+- `rag_v0` has only 7 source snippets and 8 labeled queries, so the perfect smoke metrics are not a production claim.
+- No generation, citation-faithfulness scoring, dense embedding comparison, hybrid retrieval, or llama.cpp/GGUF local serving is complete yet.
+- The next step is to expand public-resource evidence and held-out queries before adding answer generation.

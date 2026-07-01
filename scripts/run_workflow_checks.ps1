@@ -20,7 +20,7 @@ Run-Command "workflow policy check" {
 }
 
 Run-Command "python compile" {
-    python -m py_compile scripts\compare_medication_contrast.py scripts\compare_sft_smoke_eval.py scripts\compare_sft_v1_eval.py scripts\compare_sft_v1_constrained.py scripts\compare_sft_v2_eval.py scripts\compare_sft_v2_template_patch.py scripts\compare_sft_v3_eval.py scripts\download_public_datasets.py scripts\prefetch_hf_assets.py scripts\heartbeat_report.py scripts\check_workflow.py scripts\go_no_go_report.py scripts\narval_paramiko_setup.py scripts\project_gap_report.py scripts\recover_predictions_from_raw_outputs.py scripts\summarize_baseline.py scripts\summarize_v1_1_gaps.py scripts\summarize_sft_v2_template_patch_gaps.py scripts\validate_predictions.py scripts\validate_sft_smoke_dataset.py scripts\normalize_predictions.py scripts\normalize_report_types.py scripts\template_doctor_summary.py eval\metrics_crisis.py eval\metrics_extract.py eval\metrics_risk.py eval\metrics_safety.py eval\metrics_summary.py eval\run_eval.py src\prediction_normalization.py src\product_spine.py train\build_sft_smoke_dataset.py train\build_sft_v1_dataset.py train\build_sft_v2_dataset.py train\build_sft_v3_dataset.py train\run_baseline.py train\train_sft.py
+    python -m py_compile scripts\compare_medication_contrast.py scripts\compare_sft_smoke_eval.py scripts\compare_sft_v1_eval.py scripts\compare_sft_v1_constrained.py scripts\compare_sft_v2_eval.py scripts\compare_sft_v2_template_patch.py scripts\compare_sft_v3_eval.py scripts\download_public_datasets.py scripts\prefetch_hf_assets.py scripts\heartbeat_report.py scripts\check_workflow.py scripts\go_no_go_report.py scripts\narval_paramiko_setup.py scripts\project_gap_report.py scripts\recover_predictions_from_raw_outputs.py scripts\run_rag_retrieval_eval.py scripts\summarize_baseline.py scripts\summarize_v1_1_gaps.py scripts\summarize_sft_v2_template_patch_gaps.py scripts\validate_predictions.py scripts\validate_sft_smoke_dataset.py scripts\normalize_predictions.py scripts\normalize_report_types.py scripts\template_doctor_summary.py eval\metrics_crisis.py eval\metrics_extract.py eval\metrics_risk.py eval\metrics_safety.py eval\metrics_summary.py eval\run_eval.py src\prediction_normalization.py src\product_spine.py train\build_sft_smoke_dataset.py train\build_sft_v1_dataset.py train\build_sft_v2_dataset.py train\build_sft_v3_dataset.py train\run_baseline.py train\train_sft.py
 }
 
 $gitBash = "C:\Program Files\Git\bin\bash.exe"
@@ -115,6 +115,10 @@ Run-Command "schema edge product spine smoke" {
 
 Run-Command "safety onset edge v1.1 product spine smoke" {
     python src\product_spine.py --gold eval\gold\safety_onset_edge_v1_1.jsonl --pred eval\gold\fixture_predictions_safety_onset_edge_v1_1_raw.jsonl --database results\product_spine\safety_onset_edge_v1_1.sqlite --out results\safety_onset_edge_v1_1\product_spine_report.json --markdown-out results\safety_onset_edge_v1_1\product_spine_doctor_summary.md --limit 6
+}
+
+Run-Command "rag v0 retrieval smoke" {
+    python scripts\run_rag_retrieval_eval.py --corpus data\public\rag_v0\corpus.jsonl --gold eval\rag\gold_v0.jsonl --out results\rag_v0\metrics.json --details-out results\rag_v0\details.json
 }
 
 if (Test-Path -LiteralPath "results\sft_v1_eval_v1_1\safety_onset_edge_v1_1\predictions_raw.jsonl") {
