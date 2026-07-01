@@ -1,6 +1,6 @@
 # Coval HeYi: Family Health Memory Copilot
 
-Coval HeYi is a private-first Chinese family health memory copilot. It turns messy family health notes, OCR report text, medication records, and symptom logs into structured records, doctor-facing summaries, safety prompts, reminders, and weekly family updates.
+Coval HeYi is a private-first Chinese family health memory copilot. It turns messy family health notes, OCR report text, voice notes, medication records, daily blood-pressure logs, and symptom updates into structured records, doctor-facing summaries, safety prompts, reminders, and weekly family updates.
 
 It is not a diagnosis or medication-advice system. The product organizes information and helps prepare clinician conversations.
 
@@ -10,10 +10,20 @@ It is not a diagnosis or medication-advice system. The product organizes informa
 
 ## What This Project Shows
 
+- A product story grounded in the author's earlier Coval AI memo work, clinic/Phlox workflow thinking for doctor-facing services, and a family need: keeping up with frequent checkups, reports, medication notes, and daily blood-pressure records at home.
 - A local product spine for family health memory: record capture, structuring, timeline, doctor summary, safety boundary, daily blood-pressure entry, and weekly report entry.
+- OCR/ASR intake design for the software service: report photos/PDFs/pasted OCR text and voice symptom notes flow into the same review-before-save medical structuring contract.
 - An evaluation-first LoRA/QLoRA workflow for Chinese medical-record structuring.
 - Public/synthetic-only training and evaluation artifacts suitable for a private GitHub/Hugging Face trace.
 - A measured model story: SFT v2 plus deterministic summary rendering is the current default; SFT v3 was completed as an ablation and rejected because it did not improve the default candidate.
+
+## Product Origin
+
+Coval began as an AI memory product: collect fragmented context, preserve useful personal history, and turn it into timely briefings. Coval HeYi applies that memory pattern to family health.
+
+The product direction also borrows discipline from clinic/Phlox work: healthcare AI should be a reviewable workflow, not a loose chatbot. The useful loop is capture -> structure -> verify -> save -> summarize for the next care conversation.
+
+The family-facing motivation is practical. A parent who often goes for checkups may accumulate lab reports, appointment notes, medication changes, and daily blood-pressure readings faster than the family can organize them. Coval HeYi is designed as a local home-running health memory layer that keeps those facts structured and ready for doctor visits while keeping real family data off cloud services, GitHub, Hugging Face, and training jobs.
 
 ## Current UI
 
@@ -21,6 +31,21 @@ The web UI is a Next.js app under `apps/coval-health-web`.
 
 - Desktop: a clinic-style review sheet that fits in one viewport, with record input, structured review rows, safety boundary, doctor summary, completeness, and model evidence.
 - Mobile: an iOS-like record page that opens directly on `New Record`, with OCR text, voice transcription, blood-pressure entry, smart organization, and structured preview.
+
+## OCR And ASR Service Design
+
+OCR and ASR are part of the software-service design, but the current public demo uses synthetic text and demo stubs rather than real family files.
+
+Planned local-first flow:
+
+1. OCR intake: phone report photo, PDF, or pasted OCR text.
+2. ASR intake: family voice note or symptom description -> transcript.
+3. Structuring: the same medical schema handles OCR text, ASR transcript, manual notes, medication records, and blood-pressure entries.
+4. Review: uncertain facts stay editable and are not silently saved.
+5. Timeline: user-confirmed records enter the local family memory database.
+6. Weekly report: a worker can summarize new records, missing fields, reminders, and doctor-prep questions.
+
+Production implementation should prefer local OCR/ASR engines for private mode, with cloud providers only if explicitly configured by the user.
 
 ## Safety And Privacy Boundary
 

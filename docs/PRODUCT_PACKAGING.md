@@ -10,6 +10,16 @@ Status: draft for portfolio/product packaging.
 - Public-facing artifacts may include only synthetic/public data, eval metrics, model card text, and adapter metadata.
 - Never upload real family records, private patient data, local SQLite databases, secrets, or Narval logs containing credentials.
 
+## Product Lineage
+
+Coval HeYi should be framed as a continuation of the broader Coval memory product idea, not as a standalone medical chatbot.
+
+- Coval AI memo: personal memory, context fragments, retrieval, briefing, and feedback.
+- Clinic/Phlox influence: doctor-facing workflow discipline, background jobs, review/apply/undo states, verification panels, and service health awareness.
+- Family motivation: a local home-running assistant for a parent who frequently has checkups, reports, medication notes, and daily blood-pressure records that need to be organized before care conversations.
+
+The product claim is therefore narrow and defensible: private family health memory, record structuring, visit preparation, reminders, and safety escalation. It should not be described as diagnosis, treatment recommendation, prescription, or medication-dose adjustment.
+
 Recommended first public trace:
 
 - Private or gated HF adapter repo: `coval-heyi-qwen2p5-7b-lora-v2`.
