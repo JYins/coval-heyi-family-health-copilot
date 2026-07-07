@@ -1883,3 +1883,16 @@ Interpretation:
 Next step:
 
 - Expand `rag_v0` into a larger public-resource evidence set with held-out queries, compare lexical/dense/hybrid retrieval, then add citation faithfulness and unsupported-claim metrics before any answer generation.
+
+Web demo memo-lineage polish on 2026-07-06:
+
+- Rebuilt the Coval HeYi web-demo copy and seed data with clean Chinese synthetic records after finding corrupted Chinese text in the frontend and FastAPI demo contract.
+- Added visible AI memo lineage to the product surface: capture -> review -> local memory -> doctor briefing.
+- Added OCR text, voice transcription, and blood-pressure intake hints as first-class modes in the record panel.
+- Added an honest project-boundary block to the demo UI so the small-sample SFT, Phase 6 retrieval-only status, and unimplemented GGUF/local-inference target are visible rather than hidden.
+- Added `GET /product-lineage` to the FastAPI demo API for downstream docs or UI clients.
+- Added `docs/INTERVIEW_DEFENSE.md` with safe interview wording, demo walkthrough, known limitations, and high-leverage next work.
+
+Next step:
+
+- Run frontend typecheck/lint/build, workflow checks, API smoke, and screenshot QA, then update README screenshots if the visual pass is acceptable.

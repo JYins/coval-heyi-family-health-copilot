@@ -31,9 +31,10 @@ Useful API routes:
 - `GET /health`
 - `GET /family-members`
 - `GET /model-evidence`
+- `GET /product-lineage`
 - `POST /structure`
 
-The frontend reads `NEXT_PUBLIC_COVAL_API_BASE_URL` and falls back to `http://localhost:8000`.
+The frontend reads `NEXT_PUBLIC_COVAL_API_BASE_URL` and falls back to `http://127.0.0.1:8000`.
 
 The demo uses synthetic records only. It does not diagnose, prescribe, or adjust medication.
 
@@ -49,6 +50,7 @@ Current model evidence shown in the UI:
 `Coval HeYi` turns messy family notes, OCR text, and future voice snippets into:
 
 - structured health facts;
+- an AI memo lineage from capture to review to local memory to doctor briefing;
 - a longitudinal family timeline;
 - a visit-prep communication summary;
 - safety refusal or crisis escalation flags;

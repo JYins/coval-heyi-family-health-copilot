@@ -29,7 +29,7 @@ The family-facing motivation is practical. A parent who often goes for checkups 
 
 The web UI is a Next.js app under `apps/coval-health-web`.
 
-- Desktop: a clinic-style review sheet that fits in one viewport, with record input, structured review rows, safety boundary, doctor summary, completeness, and model evidence.
+- Desktop: a clinic-style review sheet that fits in one viewport, with record input, AI memo lineage, structured review rows, safety boundary, doctor summary, completeness, honest scope, and model evidence.
 - Mobile: an iOS-like record page that opens directly on `New Record`, with OCR text, voice transcription, blood-pressure entry, smart organization, and structured preview.
 
 ## OCR And ASR Service Design
@@ -115,6 +115,7 @@ See:
 
 - `docs/experiment_log.md`
 - `docs/error_analysis.md`
+- `docs/INTERVIEW_DEFENSE.md`
 - `results/sft_v2_eval_template_patch/comparison.md`
 - `results/sft_v3_eval/comparison_vs_v2_template_patch.md`
 

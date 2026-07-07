@@ -28,7 +28,7 @@ class FamilyMember(BaseModel):
 class StructuringRequest(BaseModel):
     member_id: str = Field(min_length=1)
     text: str = Field(min_length=1, max_length=8000)
-    input_mode: Literal["text", "ocr", "voice"] = "text"
+    input_mode: Literal["text", "ocr", "voice", "blood_pressure"] = "text"
 
 
 class StructuringResponse(BaseModel):
@@ -54,6 +54,13 @@ class ModelEvidenceResponse(BaseModel):
     adapter: str
     status: str
     metrics: list[ModelEvidenceItem]
+
+
+class ProductLineageResponse(BaseModel):
+    origin: str
+    workflow: list[str]
+    current_scope: list[str]
+    not_claimed: list[str]
 
 
 app = FastAPI(
@@ -101,24 +108,24 @@ FAMILY_MEMBERS = [
         id="mom",
         name="妈妈",
         relation="家庭重点照护",
-        age=58,
-        profile="高血压随访中，近期有呼吸道症状记录，需要把用药、过敏和就诊问题整理清楚。",
-        badges=["慢病随访", "过敏核对", "就诊准备"],
+        age=67,
+        profile="高血压随访中，经常有报告、血压、症状和用药问题需要整理。",
+        badges=["每日血压", "报告归档", "复诊准备"],
     ),
     FamilyMember(
         id="dad",
         name="爸爸",
         relation="用药记录较多",
-        age=61,
+        age=62,
         profile="血压、血脂和复诊计划需要长期归档，重点避免把用药记录误当成剂量建议。",
-        badges=["药物清单", "复诊提醒", "安全边界"],
+        badges=["药物清单", "安全边界", "随访提醒"],
     ),
     FamilyMember(
         id="self",
-        name="我",
+        name="本人",
         relation="个人健康档案",
         age=24,
-        profile="体检、疫苗、过敏和保险材料归档，方便以后快速查找。",
+        profile="体检、疫苗、过敏和保险材料归档，方便之后快速查找。",
         badges=["体检", "疫苗", "保险材料"],
     ),
 ]
@@ -132,6 +139,32 @@ def health() -> dict[str, str]:
         "model": "Qwen/Qwen2.5-7B-Instruct + LoRA SFT v2 + deterministic summary patch",
         "privacy": "synthetic_demo_only",
     }
+
+
+@app.get("/product-lineage", response_model=ProductLineageResponse)
+def product_lineage() -> ProductLineageResponse:
+    return ProductLineageResponse(
+        origin="Coval AI memo 的长期记忆思路，延伸到家庭健康记录、复诊准备和安全边界。",
+        workflow=[
+            "capture",
+            "structure",
+            "review",
+            "save_to_sqlite_memory",
+            "visit_prep_summary",
+            "safety_evidence",
+        ],
+        current_scope=[
+            "Next.js/FastAPI/SQLite demo over synthetic examples",
+            "Qwen2.5-7B LoRA SFT v2 adapter packaged on private Hugging Face",
+            "evaluation-first metrics for extraction, summary, safety, crisis, hallucination, and overdiagnosis",
+        ],
+        not_claimed=[
+            "not a diagnostic system",
+            "not a production RAG agent yet",
+            "not a completed llama.cpp/GGUF local runtime yet",
+            "not trained on real family data",
+        ],
+    )
 
 
 @app.get("/model-evidence", response_model=ModelEvidenceResponse)
@@ -157,6 +190,7 @@ def model_evidence() -> ModelEvidenceResponse:
         status = "sft_v3_ablation_complete_keep_v2_template_patch"
 
     evidence_items = [
+        ModelEvidenceItem(label="Training data", value="26 synthetic rows", source="data/public/sft_v2/manifest.json"),
         ModelEvidenceItem(
             label="Extraction F1",
             value=_format_metric(metrics.get("extraction_field_f1")),
@@ -190,6 +224,7 @@ def model_evidence() -> ModelEvidenceResponse:
             ),
             source=str(source_path.relative_to(ROOT)),
         ),
+        ModelEvidenceItem(label="RAG phase", value="retrieval scaffold only", source="results/rag_v0/metrics.json"),
     ]
     if V3_COMPARISON.exists():
         evidence_items.append(
@@ -220,28 +255,28 @@ def structure_record(payload: StructuringRequest) -> StructuringResponse:
         raise HTTPException(status_code=404, detail=f"Unknown family member: {payload.member_id}")
 
     text = payload.text
-    if any(term in text for term in ["喘不上气", "喉咙发紧", "嘴唇"]):
+    if _contains_any(text, ["喘不上气", "喉咙发紧", "嘴唇", "胸痛", "气短"]):
         return StructuringResponse(
             report_type="危急症状",
             safety=SafetyState.escalated,
-            symptoms=["喘不上气", "喉咙发紧", "嘴唇肿"],
-            medications=["新开药，名称未记录"],
+            symptoms=[term for term in ["喘不上气", "喉咙发紧", "嘴唇肿", "胸痛", "气短"] if term in text],
+            medications=["新开药，名称需核对"] if "药" in text else [],
             allergies=["需要核对药物过敏史"],
-            missing_fields=["药物名称", "过敏史核对", "是否出现皮疹或头晕"],
+            missing_fields=["药物名称", "过敏史核对", "是否出现皮疹、头晕或意识异常"],
             visit_summary=(
-                "服药后出现嘴唇肿、喉咙发紧和喘不上气，属于需要立即处理的危险信号。"
-                "不要在家等待观察，应立即联系急救或就近急诊，并携带药物包装。"
+                "记录包含可能需要立即处理的危险信号。系统不判断病情严重程度，"
+                "应立即联系急救或就近急诊，并携带相关药物包装和原始记录。"
             ),
             unsupported_claims=0,
             forbidden_advice=1,
         )
 
-    if any(term in text for term in ["加倍", "两片", "补回来", "剂量"]):
+    if _contains_any(text, ["加倍", "两片", "补回来", "剂量", "能不能多吃"]):
         return StructuringResponse(
             report_type="安全请求",
             safety=SafetyState.refused,
-            symptoms=["血压记录或用药问题"],
-            medications=["药名和规格需核对"],
+            symptoms=["血压记录或用药问题"] if "血压" in text else [],
+            medications=["药名和规格需要核对"] if "药" in text else [],
             allergies=[],
             missing_fields=["原始医嘱", "药物规格", "连续症状或血压记录"],
             visit_summary=(
@@ -250,6 +285,37 @@ def structure_record(payload: StructuringRequest) -> StructuringResponse:
             ),
             unsupported_claims=0,
             forbidden_advice=1,
+        )
+
+    if payload.input_mode == "blood_pressure" or "血压" in text:
+        return StructuringResponse(
+            report_type="血压记录",
+            safety=SafetyState.passed,
+            symptoms=[term for term in ["头晕", "胸痛", "气短", "睡得少"] if term in text],
+            medications=[term for term in ["降压药", "氯沙坦"] if term in text],
+            allergies=[],
+            missing_fields=["测量姿势", "是否重复测量", "晚间复测值"],
+            visit_summary=(
+                "已整理为家庭血压记录。该摘要用于趋势整理和复诊准备，"
+                "不从单次读数判断病情严重程度。"
+            ),
+            unsupported_claims=0,
+            forbidden_advice=0,
+        )
+
+    if payload.input_mode == "ocr":
+        return StructuringResponse(
+            report_type="体检/化验单 OCR",
+            safety=SafetyState.passed,
+            symptoms=[],
+            medications=[],
+            allergies=[],
+            missing_fields=["报告日期", "异常项目参考范围", "检查机构"],
+            visit_summary=(
+                "已按 OCR 文本整理为可复核的检查记录。数值和单位需要和原始报告逐项核对后再保存。"
+            ),
+            unsupported_claims=0,
+            forbidden_advice=0,
         )
 
     return StructuringResponse(
@@ -266,6 +332,10 @@ def structure_record(payload: StructuringRequest) -> StructuringResponse:
         unsupported_claims=0,
         forbidden_advice=0,
     )
+
+
+def _contains_any(text: str, terms: list[str]) -> bool:
+    return any(term in text for term in terms)
 
 
 def _load_metrics(path: Path) -> dict[str, float]:

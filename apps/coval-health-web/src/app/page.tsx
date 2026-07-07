@@ -24,7 +24,10 @@ import {
   baseTimeline,
   evalEvidence,
   familyMembers,
+  memorySteps,
+  modeHints,
   samples,
+  scopeFacts,
   type EvalEvidenceItem,
   type HealthSample,
   type SafetyState,
@@ -38,7 +41,7 @@ const safetyLabel: Record<SafetyState, string> = {
 };
 
 const safetyCopy: Record<SafetyState, string> = {
-  passed: "当前记录可作为整理材料保存；仍需由医生确认。",
+  passed: "当前记录可作为整理材料保存；仍需要由医生确认医学判断。",
   refused: "涉及诊断或用药调整，系统只保留问题，不给剂量建议。",
   escalated: "记录包含危险信号，应立即联系急救或就近急诊。"
 };
@@ -51,17 +54,26 @@ const safetyTone: Record<SafetyState, string> = {
 
 const navItems = [
   { label: "新建记录", icon: Plus, active: true },
-  { label: "时间线", icon: CalendarDays },
+  { label: "健康记忆", icon: CalendarDays },
   { label: "每日血压", icon: HeartPulse },
   { label: "家庭周报", icon: FileText },
   { label: "模型证据", icon: TableProperties },
-  { label: "隐私", icon: LockKeyhole }
+  { label: "隐私边界", icon: LockKeyhole }
 ];
 
 const inputModes = [
-  { label: "OCR文本", icon: FileScan },
+  { label: "OCR 文本", icon: FileScan },
   { label: "语音转写", icon: Mic },
   { label: "记录血压", icon: HeartPulse }
+];
+
+const evidenceOrder = [
+  "Base model",
+  "Default candidate",
+  "Training data",
+  "Extraction F1",
+  "Safety refusal",
+  "RAG phase"
 ];
 
 function listText(items: string[], fallback = "未识别") {
@@ -76,22 +88,14 @@ function labText(sample: HealthSample) {
 }
 
 function firstSentence(text: string) {
-  return text.split(/[。！？]/)[0] || text.slice(0, 28);
+  return text.split(/[。！？；]/)[0] || text.slice(0, 28);
 }
-
-const evidenceOrder = [
-  "Base model",
-  "Default candidate",
-  "Extraction F1",
-  "Summary relaxed",
-  "Relaxed summary",
-  "Safety refusal",
-  "Crisis recall"
-];
 
 function compactEvidenceSource(label: string, source?: string) {
   if (label === "Default candidate") return "v2 default";
   if (label === "Base model") return "model";
+  if (label === "Training data") return "manifest";
+  if (label === "RAG phase") return "phase 6";
   if (!source) return "eval";
   if (source.includes("safety_onset_edge")) return "onset_edge_v1.1";
   if (source.includes("medication_contrast")) return "med_contrast";
@@ -107,7 +111,8 @@ function compactEvidenceValue(value: string) {
   return value
     .replace("Qwen/Qwen2.5-7B-Instruct", "Qwen2.5-7B")
     .replace("LoRA SFT v2 + deterministic summary patch", "v2 + summary patch")
-    .replace("LoRA SFT v2 + template patch", "v2 + summary patch");
+    .replace("LoRA SFT v2 + template patch", "v2 + summary patch")
+    .replace("LoRA SFT v2 + summary template", "v2 + summary patch");
 }
 
 function getReviewRows(sample: HealthSample) {
@@ -148,7 +153,7 @@ function getReviewRows(sample: HealthSample) {
 export default function Home() {
   const [memberId, setMemberId] = useState("mom");
   const [sampleId, setSampleId] = useState("symptom-note");
-  const [inputMode, setInputMode] = useState("OCR文本");
+  const [inputMode, setInputMode] = useState("OCR 文本");
   const [timeline, setTimeline] = useState<TimelineItem[]>(baseTimeline);
   const [saved, setSaved] = useState(false);
   const [modelEvidence, setModelEvidence] = useState<EvalEvidenceItem[]>(evalEvidence);
@@ -175,7 +180,7 @@ export default function Home() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const apiBase = process.env.NEXT_PUBLIC_COVAL_API_BASE_URL ?? "http://localhost:8000";
+    const apiBase = process.env.NEXT_PUBLIC_COVAL_API_BASE_URL ?? "http://127.0.0.1:8000";
 
     async function loadEvidence() {
       try {
@@ -190,7 +195,9 @@ export default function Home() {
         setModelEvidence([
           { label: "Base model", value: data.base_model, source: "model" },
           { label: "Default candidate", value: data.adapter, source: data.status },
-          ...data.metrics
+          { label: "Training data", value: "26 synthetic rows", source: "sft_v2 manifest" },
+          ...data.metrics,
+          { label: "RAG phase", value: "retrieval scaffold only", source: "rag_v0" }
         ]);
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
@@ -210,6 +217,7 @@ export default function Home() {
 
   function chooseSample(sample: HealthSample) {
     setSampleId(sample.id);
+    setInputMode(sample.inputType === "手动记录" || sample.inputType === "安全请求" ? "OCR 文本" : sample.inputType);
     setSaved(false);
   }
 
@@ -254,6 +262,11 @@ export default function Home() {
           ))}
         </nav>
 
+        <section className="memory-mini" aria-label="Coval AI memo lineage">
+          <strong>AI Memo lineage</strong>
+          <span>Coval 的记忆流：碎片上下文，到长期档案，再到复诊前 briefing。</span>
+        </section>
+
         <section className="family-switcher" aria-label="家庭成员">
           <div className="rail-heading">家庭成员</div>
           {familyMembers.map((item) => (
@@ -274,18 +287,18 @@ export default function Home() {
 
         <p className="privacy-note">
           <ShieldCheck size={16} />
-          公开演示只使用合成/公开样例；真实家庭资料留在本地。
+          公开演示只使用 synthetic/public-safe 样例；真实家庭资料留在本地。
         </p>
       </aside>
 
       <section className="workspace">
         <header className="patient-strip">
           <div>
-            <span className="eyebrow">新建记录</span>
-            <h1>{member.name} · {member.age}岁</h1>
+            <span className="eyebrow">Coval Health Memo</span>
+            <h1>{member.name} · {member.age} 岁</h1>
           </div>
           <div className="strip-meta">
-            <span>今日</span>
+            <span>{member.badges[0]}</span>
             <span>来源：{selected.inputType}</span>
             <span>类型：{selected.reportType}</span>
           </div>
@@ -309,7 +322,7 @@ export default function Home() {
             <div className="panel-title">
               <div>
                 <h2>新建记录</h2>
-                <p>仅整理信息，不替代诊断</p>
+                <p>只整理信息，不替代诊断或用药建议。</p>
               </div>
               <span className={`state-label ${safetyTone[selected.safety]}`}>{safetyLabel[selected.safety]}</span>
             </div>
@@ -327,6 +340,7 @@ export default function Home() {
                 </button>
               ))}
             </div>
+            <p className="mode-hint">{modeHints[inputMode]}</p>
 
             <textarea aria-label="健康记录内容" readOnly value={selected.note} />
 
@@ -358,13 +372,23 @@ export default function Home() {
           <section className="review-panel" aria-label="结构化复核">
             <div className="panel-title">
               <div>
-                <h2>结构化复核</h2>
-                <p>保存前可以逐行核对原文和结构化字段。</p>
+                <h2>AI Memo 复核链路</h2>
+                <p>先把碎片整理成可核对事实，再进入本地家庭健康记忆。</p>
               </div>
               <button className="secondary-button" onClick={saveToTimeline} type="button">
                 <Save size={16} />
                 确认保存
               </button>
+            </div>
+
+            <div className="memo-flow" aria-label="AI memo workflow">
+              {memorySteps.map((step, index) => (
+                <div className="memo-step" key={step.title}>
+                  <span className="memo-index">{index + 1}</span>
+                  <strong>{step.title}</strong>
+                  <p>{step.detail}</p>
+                </div>
+              ))}
             </div>
 
             <div className="review-table">
@@ -399,7 +423,7 @@ export default function Home() {
 
             <section className="inspector-block">
               <div className="block-title">
-                <span>医生摘要</span>
+                <span>给医生看的摘要</span>
                 <FileText size={17} />
               </div>
               <p className="summary-text">{selected.summary}</p>
@@ -439,6 +463,18 @@ export default function Home() {
               </div>
             </section>
 
+            <section className="inspector-block scope-block">
+              <div className="block-title">
+                <span>项目边界</span>
+                <LockKeyhole size={17} />
+              </div>
+              <ul>
+                {scopeFacts.slice(0, 3).map((fact) => (
+                  <li key={fact}>{fact}</li>
+                ))}
+              </ul>
+            </section>
+
             <section className="inspector-block evidence-block" id="model-evidence">
               <div className="block-title">
                 <span>模型证据</span>
@@ -448,7 +484,7 @@ export default function Home() {
                 <thead>
                   <tr>
                     <th>指标</th>
-                    <th>数据集</th>
+                    <th>来源</th>
                     <th>结果</th>
                   </tr>
                 </thead>
@@ -469,7 +505,7 @@ export default function Home() {
         <section className="timeline-strip" aria-label="最近时间线">
           <div className="timeline-title">
             <CheckCircle2 size={16} />
-            <span>{saved ? "已保存到时间线" : "最近时间线"}</span>
+            <span>{saved ? "已保存到健康记忆" : "长期健康记忆"}</span>
           </div>
           {visibleTimeline.slice(0, 3).map((item) => (
             <article key={item.id}>

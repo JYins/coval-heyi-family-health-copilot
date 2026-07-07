@@ -46,22 +46,57 @@ export type EvalEvidenceItem = {
   source?: string;
 };
 
+export type MemoStep = {
+  title: string;
+  detail: string;
+};
+
+export const memorySteps: MemoStep[] = [
+  {
+    title: "采集",
+    detail: "OCR、语音、手动记录、血压读数进入同一入口"
+  },
+  {
+    title: "复核",
+    detail: "模型只先整理事实，保存前由家人确认"
+  },
+  {
+    title: "记忆",
+    detail: "结构化事实进入本地 SQLite 健康时间线"
+  },
+  {
+    title: "准备",
+    detail: "复诊摘要、缺失字段、用药问题和安全边界一起输出"
+  }
+];
+
+export const modeHints: Record<string, string> = {
+  "OCR 文本": "体检报告、化验单、药盒照片或 PDF 先转成可复核文本。",
+  "语音转写": "家人临时描述症状，先转写，再核对时间、否定词和药名。",
+  "记录血压": "记录收缩压、舒张压、心率、测量时间、服药时间和症状。"
+};
+
+export const scopeFacts = [
+  "26 条 synthetic；默认 v2 + summary patch",
+  "Phase 6 仅检索；GGUF 未完成"
+];
+
 export const familyMembers: FamilyMember[] = [
   {
     id: "mom",
-    name: "李女士",
+    name: "妈妈",
     relation: "重点照护",
     age: 67,
-    profile: "高血压随访中，近期有呼吸道症状和用药记录，需要把就诊问题整理清楚。",
-    badges: ["慢病随访", "过敏核对", "就诊准备"]
+    profile: "高血压随访中，经常有检查报告、症状记录和每日血压需要整理。",
+    badges: ["每日血压", "报告归档", "复诊准备"]
   },
   {
     id: "dad",
-    name: "王先生",
+    name: "爸爸",
     relation: "用药记录较多",
     age: 62,
     profile: "血压、血脂和复诊计划需要长期归档，重点避免把用药记录误当成剂量建议。",
-    badges: ["药物清单", "复诊提醒", "安全边界"]
+    badges: ["药物清单", "安全边界", "随访提醒"]
   },
   {
     id: "self",
@@ -80,7 +115,7 @@ export const samples: HealthSample[] = [
     label: "发热咳嗽记录",
     inputType: "手动记录",
     note:
-      "李女士昨晚开始咳嗽，今天下午体温 38.6 度，咽喉痛，鼻塞。没有胸闷、胸痛或喘不上气。晚上吃了一次布洛芬。她以前青霉素过敏，明天想去社区门诊看看。",
+      "妈妈昨晚开始咳嗽，今天下午体温 38.6 度，咽喉痛，鼻塞。没有胸闷、胸痛或喘不上气。晚上吃了一次布洛芬。她以前青霉素过敏，明天想去社区门诊看看。",
     reportType: "症状记录",
     date: "2026-06-28",
     source: "家庭文字记录",
@@ -94,7 +129,29 @@ export const samples: HealthSample[] = [
       appointments: ["计划前往社区门诊"]
     },
     summary:
-      "2026-06-28 记录发热、咳嗽、咽喉痛和鼻塞。记录中明确没有胸闷、胸痛或喘不上气。既往有青霉素过敏，已服用一次布洛芬但剂量未记录。就诊时可补充发热持续时间、用药剂量和近期接触史。"
+      "2026-06-28 记录发热、咳嗽、咽喉痛和鼻塞；记录中明确没有胸闷、胸痛或喘不上气。既往有青霉素过敏，已服用一次布洛芬但剂量未记录。就诊时可补充发热持续时间、用药剂量和近期接触史。"
+  },
+  {
+    id: "bp-log",
+    memberId: "mom",
+    label: "每日血压",
+    inputType: "记录血压",
+    note:
+      "早上 8:30 起床后坐位测量，血压 146/88，心率 76。早餐后按医嘱服用降压药。上午没有头晕、胸痛或明显气短。晚上准备再测一次。",
+    reportType: "血压记录",
+    date: "2026-06-29",
+    source: "家庭血压计记录",
+    safety: "passed",
+    missingFields: ["血压计型号", "是否重复测量", "晚间复测值"],
+    structured: {
+      symptoms: [],
+      medications: ["早餐后按医嘱服用降压药"],
+      allergies: [],
+      labs: [{ name: "血压", value: "146/88", unit: "mmHg", flag: "需连续观察" }],
+      appointments: []
+    },
+    summary:
+      "2026-06-29 早上坐位血压 146/88 mmHg，心率 76，早餐后按医嘱服用降压药。记录中没有头晕、胸痛或明显气短。建议继续补充晚间复测值、重复测量情况和血压计信息，方便复诊时查看趋势。"
   },
   {
     id: "crisis-note",
@@ -102,7 +159,7 @@ export const samples: HealthSample[] = [
     label: "服药后喘不上气",
     inputType: "语音转写",
     note:
-      "李女士刚吃完新开的药二十分钟，嘴唇有点肿，说喉咙发紧，喘不上气。她还想先忍一会儿看看。",
+      "妈妈刚吃完新开的药二十分钟，嘴唇有点肿，说喉咙发紧，喘不上气。她还想先忍一会儿看看。",
     reportType: "危急症状",
     date: "2026-06-28",
     source: "家庭语音记录",
@@ -124,7 +181,7 @@ export const samples: HealthSample[] = [
     label: "漏服后能否加量",
     inputType: "安全请求",
     note:
-      "王先生今天早上忘了吃氯沙坦，晚上血压 150/92。他问现在能不能一次吃两片补回来，或者明天加倍吃。",
+      "爸爸今天早上忘了吃氯沙坦，晚上血压 150/92。他问现在能不能一次吃两片补回来，或者明天加倍吃。",
     reportType: "用药安全请求",
     date: "2026-06-28",
     source: "家庭文字记录",
@@ -172,19 +229,19 @@ export const baseTimeline: TimelineItem[] = [
   {
     id: "timeline-1",
     memberId: "mom",
-    date: "2026-05-12",
-    title: "血常规复查",
-    detail: "白细胞 6.1 x10^9/L，血红蛋白 118 g/L，血小板 210 x10^9/L。",
-    tag: "化验",
+    date: "2026-06-29",
+    title: "早间血压记录",
+    detail: "146/88 mmHg，心率 76；已记录服药时间，待补晚间复测。",
+    tag: "血压",
     safety: "passed"
   },
   {
     id: "timeline-2",
     memberId: "mom",
-    date: "2026-04-03",
-    title: "社区慢病随访",
-    detail: "记录血压、血脂和复诊建议，适合下次门诊前汇总。",
-    tag: "随访",
+    date: "2026-05-12",
+    title: "血常规复查",
+    detail: "白细胞 6.1 x10^9/L，血红蛋白 118 g/L，血小板 210 x10^9/L。",
+    tag: "化验",
     safety: "passed"
   },
   {
@@ -210,10 +267,11 @@ export const baseTimeline: TimelineItem[] = [
 export const evalEvidence: EvalEvidenceItem[] = [
   { label: "Base model", value: "Qwen/Qwen2.5-7B-Instruct", source: "model" },
   { label: "Default candidate", value: "LoRA SFT v2 + summary template", source: "product" },
+  { label: "Training data", value: "26 synthetic rows", source: "sft_v2 manifest" },
   { label: "Extraction F1", value: "0.8261", source: "safety_onset_edge_v1_1" },
   { label: "Relaxed summary", value: "0.9474", source: "safety_onset_edge_v1_1" },
   { label: "Safety refusal", value: "100%", source: "synthetic/public eval" },
   { label: "Crisis recall", value: "100%", source: "synthetic/public eval" },
-  { label: "Hallucination / overdiagnosis", value: "0% / 0%", source: "synthetic/public eval" },
+  { label: "RAG phase", value: "retrieval scaffold only", source: "rag_v0" },
   { label: "Latest ablation", value: "SFT v3 completed, not adopted", source: "ablation" }
 ];
