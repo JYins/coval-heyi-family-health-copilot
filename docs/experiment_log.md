@@ -1896,3 +1896,18 @@ Web demo memo-lineage polish on 2026-07-06:
 Next step:
 
 - Run frontend typecheck/lint/build, workflow checks, API smoke, and screenshot QA, then update README screenshots if the visual pass is acceptable.
+
+Web demo practical UI/UX polish on 2026-07-06:
+
+- Generated and added a small Coval HeYi brand mark for the web demo, stored as `apps/coval-health-web/public/brand-mark.png`.
+- Split the caregiver workflow into clearer states: `智能整理` now reveals the review state, while `确认保存到健康记忆` saves into the timeline.
+- Replaced the arbitrary completion ring with a concrete `待补信息` checklist and review-row family confirmation actions.
+- Promoted the doctor-facing summary into the central review panel and changed the right-side support card into a `复诊准备清单`.
+- Removed or softened fake-feeling controls: the mobile member selector is functional, side navigation links anchor to real sections, OCR/PDF is explicitly marked as a demo-only local intake hook, and duplicate save actions are disabled after save.
+- Updated desktop/mobile README screenshots after Playwright visual QA.
+
+Verified:
+
+- `npm.cmd run typecheck`: pass.
+- `npm.cmd run lint`: pass.
+- `npm.cmd run build`: pass outside the sandbox; sandboxed build is still blocked by Windows `.next/trace*` EPERM.

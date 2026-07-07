@@ -5,7 +5,6 @@ import {
   Bell,
   CalendarDays,
   CheckCircle2,
-  ChevronDown,
   ClipboardCheck,
   FileScan,
   FileText,
@@ -16,10 +15,10 @@ import {
   Save,
   ShieldCheck,
   SlidersHorizontal,
-  Stethoscope,
   TableProperties
 } from "lucide-react";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
 import {
   baseTimeline,
   evalEvidence,
@@ -35,13 +34,13 @@ import {
 } from "@/lib/demo-data";
 
 const safetyLabel: Record<SafetyState, string> = {
-  passed: "可保存",
+  passed: "可整理，需确认",
   refused: "转为就医问题",
   escalated: "建议立即就医"
 };
 
 const safetyCopy: Record<SafetyState, string> = {
-  passed: "当前记录可作为整理材料保存；仍需要由医生确认医学判断。",
+  passed: "当前记录可作为整理材料进入家庭记忆；医学判断仍需要医生确认。",
   refused: "涉及诊断或用药调整，系统只保留问题，不给剂量建议。",
   escalated: "记录包含危险信号，应立即联系急救或就近急诊。"
 };
@@ -53,12 +52,12 @@ const safetyTone: Record<SafetyState, string> = {
 };
 
 const navItems = [
-  { label: "新建记录", icon: Plus, active: true },
-  { label: "健康记忆", icon: CalendarDays },
-  { label: "每日血压", icon: HeartPulse },
-  { label: "家庭周报", icon: FileText },
-  { label: "模型证据", icon: TableProperties },
-  { label: "隐私边界", icon: LockKeyhole }
+  { label: "新建记录", icon: Plus, active: true, href: "#new-record" },
+  { label: "健康记忆", icon: CalendarDays, href: "#timeline" },
+  { label: "每日血压", icon: HeartPulse, href: "#new-record" },
+  { label: "家庭周报", icon: FileText, href: "#weekly-report" },
+  { label: "项目证据", icon: TableProperties, href: "#project-evidence" },
+  { label: "隐私边界", icon: LockKeyhole, href: "#privacy-boundary" }
 ];
 
 const inputModes = [
@@ -156,6 +155,8 @@ export default function Home() {
   const [inputMode, setInputMode] = useState("OCR 文本");
   const [timeline, setTimeline] = useState<TimelineItem[]>(baseTimeline);
   const [saved, setSaved] = useState(false);
+  const [organizedSampleId, setOrganizedSampleId] = useState<string | null>("symptom-note");
+  const [checkedRows, setCheckedRows] = useState<Record<string, boolean>>({});
   const [modelEvidence, setModelEvidence] = useState<EvalEvidenceItem[]>(evalEvidence);
 
   const member = familyMembers.find((item) => item.id === memberId) ?? familyMembers[0];
@@ -170,8 +171,23 @@ export default function Home() {
     [member.id, timeline]
   );
 
-  const completion = Math.max(48, 92 - selected.missingFields.length * 12);
   const reviewRows = getReviewRows(selected);
+  const isOrganized = organizedSampleId === selected.id;
+  const intakeFacts = [
+    { label: "来源", value: selected.source },
+    { label: "日期", value: selected.date },
+    { label: "待补", value: selected.missingFields.length > 0 ? `${selected.missingFields.length} 项` : "完整" }
+  ];
+  const visitPrepItems = [
+    selected.structured.medications.length > 0
+      ? `核对用药：${selected.structured.medications.slice(0, 2).join("、")}`
+      : "带上近期用药清单",
+    selected.structured.allergies.length > 0
+      ? `过敏史：${selected.structured.allergies.slice(0, 2).join("、")}`
+      : "确认过敏史",
+    selected.missingFields[0] ? `补充：${selected.missingFields[0]}` : "摘要可用于复诊沟通"
+  ];
+  const checkedCount = reviewRows.filter((row) => checkedRows[`${selected.id}:${row.section}`]).length;
   const evidenceRows = evidenceOrder
     .map((label) => modelEvidence.find((item) => item.label === label))
     .filter((item): item is EvalEvidenceItem => Boolean(item))
@@ -212,16 +228,29 @@ export default function Home() {
     const nextSample = samples.find((sample) => sample.memberId === nextMemberId);
     setMemberId(nextMemberId);
     if (nextSample) setSampleId(nextSample.id);
+    setOrganizedSampleId(null);
     setSaved(false);
   }
 
   function chooseSample(sample: HealthSample) {
     setSampleId(sample.id);
     setInputMode(sample.inputType === "手动记录" || sample.inputType === "安全请求" ? "OCR 文本" : sample.inputType);
+    setOrganizedSampleId(null);
     setSaved(false);
   }
 
+  function organizeRecord() {
+    setOrganizedSampleId(selected.id);
+    setSaved(false);
+  }
+
+  function toggleReviewCheck(section: string) {
+    const key = `${selected.id}:${section}`;
+    setCheckedRows((items) => ({ ...items, [key]: !items[key] }));
+  }
+
   function saveToTimeline() {
+    if (!isOrganized) return;
     setTimeline((items) => {
       if (items.some((item) => item.id === `saved-${selected.id}`)) return items;
       return [
@@ -245,7 +274,7 @@ export default function Home() {
       <aside className="side-rail" aria-label="主导航">
         <div className="brand-lockup">
           <div className="brand-mark">
-            <Stethoscope size={22} />
+            <Image alt="" className="brand-mark-image" height={34} priority src="/brand-mark.png" width={34} />
           </div>
           <div>
             <strong>Coval HeYi</strong>
@@ -255,7 +284,7 @@ export default function Home() {
 
         <nav className="rail-nav">
           {navItems.map((item) => (
-            <a className={item.active ? "active" : ""} href={item.label === "模型证据" ? "#model-evidence" : "#"} key={item.label}>
+            <a className={item.active ? "active" : ""} href={item.href} key={item.label}>
               <item.icon size={17} />
               <span>{item.label}</span>
             </a>
@@ -263,7 +292,7 @@ export default function Home() {
         </nav>
 
         <section className="memory-mini" aria-label="Coval AI memo lineage">
-          <strong>AI Memo lineage</strong>
+          <strong>家庭记忆链路</strong>
           <span>Coval 的记忆流：碎片上下文，到长期档案，再到复诊前 briefing。</span>
         </section>
 
@@ -285,7 +314,7 @@ export default function Home() {
           ))}
         </section>
 
-        <p className="privacy-note">
+        <p className="privacy-note" id="privacy-boundary">
           <ShieldCheck size={16} />
           公开演示只使用 synthetic/public-safe 样例；真实家庭资料留在本地。
         </p>
@@ -302,23 +331,28 @@ export default function Home() {
             <span>来源：{selected.inputType}</span>
             <span>类型：{selected.reportType}</span>
           </div>
-          <button className="secondary-button" type="button">
+          <div className="strip-status">
             <SlidersHorizontal size={16} />
-            筛选视图
-          </button>
+            本地演示视图
+          </div>
         </header>
 
         <header className="mobile-header">
-          <button type="button" className="patient-button">
-            {member.name}
-            <ChevronDown size={15} />
-          </button>
+          <select className="mobile-member-select" onChange={(event) => chooseMember(event.target.value)} value={member.id}>
+            {familyMembers.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
           <strong>新建记录</strong>
-          <button type="button" onClick={saveToTimeline}>保存</button>
+          <button disabled={!isOrganized || saved} type="button" onClick={saveToTimeline}>
+            {saved ? "已保存" : "保存"}
+          </button>
         </header>
 
         <div className="sheet-grid">
-          <section className="record-panel" aria-label="新建记录">
+          <section className="record-panel" aria-label="新建记录" id="new-record">
             <div className="panel-title">
               <div>
                 <h2>新建记录</h2>
@@ -342,6 +376,15 @@ export default function Home() {
             </div>
             <p className="mode-hint">{modeHints[inputMode]}</p>
 
+            <div className="record-facts" aria-label="记录来源和待补信息">
+              {intakeFacts.map((fact) => (
+                <span key={fact.label}>
+                  <small>{fact.label}</small>
+                  <strong>{fact.value}</strong>
+                </span>
+              ))}
+            </div>
+
             <textarea aria-label="健康记录内容" readOnly value={selected.note} />
 
             <div className="sample-tabs" aria-label="演示样例">
@@ -357,14 +400,19 @@ export default function Home() {
               ))}
             </div>
 
+            <div className="record-needline" aria-label="保存前核对">
+              <span>保存前核对</span>
+              <strong>{selected.missingFields[0] ?? "暂无待补字段"}</strong>
+            </div>
+
             <div className="record-actions">
-              <button className="secondary-button" type="button">
+              <button className="secondary-button" disabled title="公开 demo 不读取真实文件" type="button">
                 <FileScan size={16} />
-                添加图片/PDF
+                本地 OCR 待接入
               </button>
-              <button className="primary-button" onClick={saveToTimeline} type="button">
+              <button className="primary-button" onClick={organizeRecord} type="button">
                 <ClipboardCheck size={16} />
-                智能整理
+                {isOrganized ? "重新整理" : "智能整理"}
               </button>
             </div>
           </section>
@@ -372,14 +420,19 @@ export default function Home() {
           <section className="review-panel" aria-label="结构化复核">
             <div className="panel-title">
               <div>
-                <h2>AI Memo 复核链路</h2>
+                <h2>家庭记忆复核</h2>
                 <p>先把碎片整理成可核对事实，再进入本地家庭健康记忆。</p>
               </div>
-              <button className="secondary-button" onClick={saveToTimeline} type="button">
+              <button className="secondary-button" disabled={!isOrganized || saved} onClick={saveToTimeline} type="button">
                 <Save size={16} />
-                确认保存
+                {saved ? "已保存" : "确认保存到健康记忆"}
               </button>
             </div>
+
+            <section className="doctor-brief" aria-label="给医生看的摘要">
+              <span>给医生看的摘要</span>
+              <p>{isOrganized ? selected.summary : "点击智能整理后，这里会生成可带去复诊的摘要。"}</p>
+            </section>
 
             <div className="memo-flow" aria-label="AI memo workflow">
               {memorySteps.map((step, index) => (
@@ -391,24 +444,38 @@ export default function Home() {
               ))}
             </div>
 
-            <div className="review-table">
-              <div className="review-head" role="row">
-                <span>项目</span>
-                <span>原文片段</span>
-                <span>结构化字段</span>
-                <span>状态</span>
-                <span>操作</span>
-              </div>
-              {reviewRows.map((row) => (
-                <div className="review-row" role="row" key={row.section}>
-                  <strong>{row.section}</strong>
-                  <span>{row.source}</span>
-                  <span>{row.field}</span>
-                  <span className="row-status">{row.status}</span>
-                  <button type="button">编辑</button>
+            {isOrganized ? (
+              <div className="review-table">
+                <div className="review-head" role="row">
+                  <span>项目</span>
+                  <span>原文片段</span>
+                  <span>结构化字段</span>
+                  <span>状态</span>
+                  <span>核对</span>
                 </div>
-              ))}
-            </div>
+                {reviewRows.map((row) => {
+                  const checkedKey = `${selected.id}:${row.section}`;
+                  const isChecked = Boolean(checkedRows[checkedKey]);
+                  return (
+                    <div className="review-row" role="row" key={row.section}>
+                      <strong>{row.section}</strong>
+                      <span>{row.source}</span>
+                      <span>{row.field}</span>
+                      <span className="row-status">{isChecked ? "家人已核对" : row.status}</span>
+                      <button className={isChecked ? "verified" : ""} onClick={() => toggleReviewCheck(row.section)} type="button">
+                        {isChecked ? "已核对" : row.status === "待补充" ? "补充" : "核对"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="review-empty">
+                <ClipboardCheck size={18} />
+                <strong>等待智能整理</strong>
+                <p>先确认左侧原文，再生成可核对字段、复诊摘要和待补信息。</p>
+              </div>
+            )}
           </section>
 
           <aside className="inspector" aria-label="记录检查">
@@ -421,32 +488,35 @@ export default function Home() {
               <p>{safetyCopy[selected.safety]}</p>
             </section>
 
-            <section className="inspector-block">
+            <section className="inspector-block visit-prep-block">
               <div className="block-title">
-                <span>给医生看的摘要</span>
+                <span>复诊准备清单</span>
                 <FileText size={17} />
               </div>
-              <p className="summary-text">{selected.summary}</p>
+              <ul>
+                {visitPrepItems.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
             </section>
 
             <section className="inspector-block">
               <div className="block-title">
-                <span>完整度</span>
+                <span>待补信息</span>
                 <Activity size={17} />
               </div>
-              <div className="completion-row">
-                <div className="completion-ring" style={{ "--score": `${completion}%` } as CSSProperties}>
-                  <strong>{completion}%</strong>
-                </div>
+              <div className="missing-checklist">
+                <strong>{selected.missingFields.length > 0 ? `待补 ${selected.missingFields.length} 项` : "信息完整"}</strong>
                 <ul>
                   {selected.missingFields.slice(0, 3).map((field) => (
                     <li key={field}>{field}</li>
                   ))}
                 </ul>
+                <span>{checkedCount}/{reviewRows.length} 项已核对</span>
               </div>
             </section>
 
-            <section className="inspector-block automation-block">
+            <section className="inspector-block automation-block" id="weekly-report">
               <div className="automation-row">
                 <HeartPulse size={17} />
                 <span>
@@ -475,7 +545,7 @@ export default function Home() {
               </ul>
             </section>
 
-            <section className="inspector-block evidence-block" id="model-evidence">
+            <section className="inspector-block evidence-block" id="project-evidence">
               <div className="block-title">
                 <span>模型证据</span>
                 <TableProperties size={17} />
