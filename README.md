@@ -29,8 +29,11 @@ The family-facing motivation is practical. A parent who often goes for checkups 
 
 The web UI is a Next.js app under `apps/coval-health-web`.
 
-- Desktop: a clinic-style review sheet that fits in one viewport, with record input, AI memo lineage, structured review rows, safety boundary, doctor summary, completeness, honest scope, and model evidence.
-- Mobile: an iOS-like record page that opens directly on `New Record`, with OCR text, voice transcription, blood-pressure entry, smart organization, and structured preview.
+- Desktop: a one-viewport family health workbench with record intake, smart organization, family review confirmation, doctor-facing summary, missing-info checklist, visit-prep checklist, safety boundary, and compact project evidence.
+- Mobile: an iOS-like `New Record` page that opens directly on the recording workflow, with member selection, OCR/voice/blood-pressure modes, source/date/missing-field context, smart organization, and save-after-review state.
+- The demo now separates `Smart organize` from `Confirm save to health memory`, so the UI shows the real caregiver loop: capture -> organize -> family verifies -> save -> bring summary to the doctor.
+- Demo-only hooks such as local OCR/PDF intake are clearly labeled and do not read real files in the public example.
+- Screenshots in `docs/assets/` are current Playwright captures of the latest desktop and mobile UI.
 
 ## OCR And ASR Service Design
 
@@ -38,10 +41,10 @@ OCR and ASR are part of the software-service design, but the current public demo
 
 Planned local-first flow:
 
-1. OCR intake: phone report photo, PDF, or pasted OCR text.
+1. OCR intake: phone report photo, PDF, or pasted OCR text. In the public web demo this appears as a local-intake hook, not a real file upload.
 2. ASR intake: family voice note or symptom description -> transcript.
 3. Structuring: the same medical schema handles OCR text, ASR transcript, manual notes, medication records, and blood-pressure entries.
-4. Review: uncertain facts stay editable and are not silently saved.
+4. Review: uncertain facts become family-verifiable rows with explicit `核对` / `补充` states and are not silently saved.
 5. Timeline: user-confirmed records enter the local family memory database.
 6. Weekly report: a worker can summarize new records, missing fields, reminders, and doctor-prep questions.
 

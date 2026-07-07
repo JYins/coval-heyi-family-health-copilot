@@ -2,6 +2,15 @@
 
 Family-facing health memory UI for the LoRA health project.
 
+## Current Demo Behavior
+
+- `智能整理` reveals the review state; `确认保存到健康记忆` saves only after review.
+- Review rows support family confirmation states such as `核对`, `已核对`, and `补充`.
+- The main review area promotes the doctor-facing summary, while the right rail shows a concrete visit-prep checklist and missing-field checklist.
+- Mobile opens directly on `新建记录`, with member selection, OCR/voice/blood-pressure modes, source/date/missing-field context, and save-after-review behavior.
+- `本地 OCR 待接入` is intentionally disabled in the public demo so no real files are read.
+- README screenshots are stored in `docs/assets/coval-heyi-desktop.png` and `docs/assets/coval-heyi-mobile.png`.
+
 ## Stack
 
 - Next.js App Router
@@ -52,6 +61,7 @@ Current model evidence shown in the UI:
 - structured health facts;
 - an AI memo lineage from capture to review to local memory to doctor briefing;
 - a longitudinal family timeline;
-- a visit-prep communication summary;
+- a visit-prep communication summary and checklist;
+- missing-field prompts that are visible before save;
 - safety refusal or crisis escalation flags;
 - model/eval evidence from the LoRA project.
