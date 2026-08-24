@@ -1,0 +1,6 @@
+-r requirements-web.txt
+transformers>=4.51,<5
+peft>=0.15,<1
+accelerate>=1.2,<2
+bitsandbytes>=0.45,<1
+safetensors>=0.5,<1

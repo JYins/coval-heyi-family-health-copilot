@@ -12,6 +12,7 @@ import {
   LockKeyhole,
   Mic,
   Plus,
+  RotateCcw,
   Save,
   ShieldCheck,
   SlidersHorizontal,
@@ -20,7 +21,6 @@ import {
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import {
-  baseTimeline,
   evalEvidence,
   familyMembers,
   memorySteps,
@@ -28,6 +28,7 @@ import {
   samples,
   scopeFacts,
   type EvalEvidenceItem,
+  type FamilyMember,
   type HealthSample,
   type SafetyState,
   type TimelineItem
@@ -61,6 +62,7 @@ const navItems = [
 ];
 
 const inputModes = [
+  { label: "手动记录", icon: FileText },
   { label: "OCR 文本", icon: FileScan },
   { label: "语音转写", icon: Mic },
   { label: "记录血压", icon: HeartPulse }
@@ -74,6 +76,87 @@ const evidenceOrder = [
   "Safety refusal",
   "RAG phase"
 ];
+
+const apiBase = process.env.NEXT_PUBLIC_COVAL_API_BASE_URL ?? "http://127.0.0.1:8000";
+
+type CanonicalRecord = {
+  report_type: string;
+  event_date: string | null;
+  summary: string;
+  symptoms: Array<{ text: string; onset_text?: string; negated?: boolean; source_locator?: object }>;
+  medications: Array<{ name: string; event_type?: string; dose_text?: string; source_locator?: object }>;
+  allergies: string[];
+  observations: Array<{ name: string; value: string; unit?: string; source_locator?: object }>;
+  appointments: Array<{ text: string; scheduled_at?: string | null; source_locator?: object }>;
+  missing_fields: string[];
+  safety: {
+    state: SafetyState;
+    category: string;
+    message: string;
+    unsafe_request_detected: boolean;
+    forbidden_advice_generated: 0;
+  };
+};
+
+type ApiRecord = {
+  id: string;
+  member_id: string;
+  status: "candidate" | "approved" | "archived";
+  candidate_id: string;
+  candidate_revision: number;
+  candidate: CanonicalRecord;
+  canonical: CanonicalRecord | null;
+  current_version_id: string | null;
+  version_number: number | null;
+  duplicate?: boolean;
+  extraction: { provider: string; extraction_version: string };
+};
+
+type ServiceState = {
+  state: "connecting" | "online" | "offline";
+  databaseVersion?: number;
+  provider?: string;
+  gateMode?: string;
+  realDataReady?: boolean;
+};
+
+type Capture = {
+  source_artifact_id: string;
+  member_id: string;
+  state: "captured" | "processing" | "failed_retryable" | "needs_review" | "rejected" | "completed";
+  attempt_count: number;
+  last_error_code: string | null;
+  record_id: string | null;
+  retryable: boolean;
+  source: { label: string; original_text: string; event_date: string | null };
+};
+
+type CaptureEnvelope = { capture: Capture; error?: { code: string; message: string } };
+
+async function apiJson<T>(response: Response): Promise<T> {
+  const data = (await response.json()) as T & { code?: string; detail?: string };
+  if (!response.ok) {
+    throw new Error(`${data.code ?? `http_${response.status}`}: ${data.detail ?? "请求失败"}`);
+  }
+  return data;
+}
+
+function stableKey(prefix: string, value: unknown) {
+  const text = JSON.stringify(value);
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `${prefix}-${(hash >>> 0).toString(16)}`;
+}
+
+function inputModeValue(label: string): "text" | "ocr" | "voice" | "blood_pressure" {
+  if (label === "OCR 文本") return "ocr";
+  if (label === "语音转写") return "voice";
+  if (label === "记录血压") return "blood_pressure";
+  return "text";
+}
 
 function listText(items: string[], fallback = "未识别") {
   return items.length > 0 ? items.join("、") : fallback;
@@ -114,52 +197,86 @@ function compactEvidenceValue(value: string) {
     .replace("LoRA SFT v2 + summary template", "v2 + summary patch");
 }
 
-function getReviewRows(sample: HealthSample) {
+function getReviewRows(sample: HealthSample, candidate: CanonicalRecord | null, sourceText = sample.note) {
+  const symptoms = candidate ? candidate.symptoms.map((item) => item.text) : sample.structured.symptoms;
+  const medications = candidate ? candidate.medications.map((item) => item.name) : sample.structured.medications;
+  const observations = candidate
+    ? candidate.observations.map((item) => `${item.name} ${item.value}${item.unit ?? ""}`)
+    : [];
+  const missingFields = candidate?.missing_fields ?? sample.missingFields;
   return [
     {
+      key: "report_type" as const,
       section: "主诉",
-      source: firstSentence(sample.note),
-      field: sample.reportType,
-      status: "已归类"
+      source: firstSentence(sourceText),
+      field: candidate?.report_type ?? sample.reportType,
+      status: "已归类",
+      editable: true
     },
     {
+      key: "symptoms" as const,
       section: "症状",
-      source: listText(sample.structured.symptoms),
-      field: listText(sample.structured.symptoms),
-      status: sample.structured.symptoms.length > 0 ? "已识别" : "空"
+      source: listText(symptoms),
+      field: listText(symptoms, ""),
+      status: symptoms.length > 0 ? "已识别" : "空",
+      editable: true
     },
     {
+      key: "medications" as const,
       section: "用药",
-      source: listText(sample.structured.medications),
-      field: listText(sample.structured.medications),
-      status: sample.structured.medications.length > 0 ? "需核对" : "空"
+      source: listText(medications),
+      field: listText(medications, ""),
+      status: medications.length > 0 ? "需核对" : "空",
+      editable: true
     },
     {
+      key: "observations" as const,
       section: "检查",
-      source: labText(sample),
-      field: labText(sample),
-      status: sample.structured.labs.length > 0 ? "已识别" : "空"
+      source: observations.length > 0 ? listText(observations) : labText(sample),
+      field: observations.length > 0 ? listText(observations) : labText(sample),
+      status: observations.length > 0 || sample.structured.labs.length > 0 ? "已识别" : "空",
+      editable: false
     },
     {
+      key: "missing_fields" as const,
       section: "复诊问题",
-      source: listText(sample.missingFields),
-      field: listText(sample.missingFields, "暂无待补充"),
-      status: sample.missingFields.length > 0 ? "待补充" : "完整"
+      source: listText(missingFields),
+      field: listText(missingFields, ""),
+      status: missingFields.length > 0 ? "待补充" : "完整",
+      editable: true
     }
   ];
 }
 
+function splitFields(value: string) {
+  return value.split(/[、,，]/).map((item) => item.trim()).filter(Boolean);
+}
+
 export default function Home() {
+  const [members, setMembers] = useState<FamilyMember[]>(familyMembers);
   const [memberId, setMemberId] = useState("mom");
   const [sampleId, setSampleId] = useState("symptom-note");
-  const [inputMode, setInputMode] = useState("OCR 文本");
-  const [timeline, setTimeline] = useState<TimelineItem[]>(baseTimeline);
+  const [inputMode, setInputMode] = useState("手动记录");
+  const [noteText, setNoteText] = useState(samples[0].note);
+  const [sourceLabel, setSourceLabel] = useState(samples[0].source);
+  const [eventDate, setEventDate] = useState(samples[0].date);
+  const [timeline, setTimeline] = useState<TimelineItem[]>([]);
+  const [captures, setCaptures] = useState<Capture[]>([]);
   const [saved, setSaved] = useState(false);
-  const [organizedSampleId, setOrganizedSampleId] = useState<string | null>("symptom-note");
+  const [organizedSampleId, setOrganizedSampleId] = useState<string | null>(null);
   const [checkedRows, setCheckedRows] = useState<Record<string, boolean>>({});
   const [modelEvidence, setModelEvidence] = useState<EvalEvidenceItem[]>(evalEvidence);
+  const [service, setService] = useState<ServiceState>({ state: "connecting" });
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [actionState, setActionState] = useState<"idle" | "organizing" | "saving" | "undoing">("idle");
+  const [record, setRecord] = useState<ApiRecord | null>(null);
+  const [draftCandidate, setDraftCandidate] = useState<CanonicalRecord | null>(null);
+  const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberAge, setNewMemberAge] = useState("40");
+  const [creatingMember, setCreatingMember] = useState(false);
+  const [syntheticOnlyConfirmed, setSyntheticOnlyConfirmed] = useState(false);
 
-  const member = familyMembers.find((item) => item.id === memberId) ?? familyMembers[0];
+  const member = members.find((item) => item.id === memberId) ?? members[0] ?? familyMembers[0];
   const memberSamples = samples.filter((sample) => sample.memberId === member.id);
   const selected =
     samples.find((sample) => sample.id === sampleId && sample.memberId === member.id) ??
@@ -171,21 +288,26 @@ export default function Home() {
     [member.id, timeline]
   );
 
-  const reviewRows = getReviewRows(selected);
-  const isOrganized = organizedSampleId === selected.id;
+  const currentDraftKey = stableKey("draft", {
+    memberId: member.id, noteText, inputMode, sourceLabel, eventDate
+  });
+  const reviewRows = getReviewRows(selected, draftCandidate, noteText);
+  const isOrganized = organizedSampleId === currentDraftKey && Boolean(draftCandidate && record);
+  const activeSafety = draftCandidate?.safety.state ?? selected.safety;
+  const activeMissingFields = draftCandidate?.missing_fields ?? selected.missingFields;
   const intakeFacts = [
-    { label: "来源", value: selected.source },
-    { label: "日期", value: selected.date },
-    { label: "待补", value: selected.missingFields.length > 0 ? `${selected.missingFields.length} 项` : "完整" }
+    { label: "来源", value: sourceLabel },
+    { label: "日期", value: eventDate },
+    { label: "待补", value: activeMissingFields.length > 0 ? `${activeMissingFields.length} 项` : "完整" }
   ];
   const visitPrepItems = [
-    selected.structured.medications.length > 0
-      ? `核对用药：${selected.structured.medications.slice(0, 2).join("、")}`
+    (draftCandidate?.medications.length ?? selected.structured.medications.length) > 0
+      ? `核对用药：${(draftCandidate?.medications.map((item) => item.name) ?? selected.structured.medications).slice(0, 2).join("、")}`
       : "带上近期用药清单",
-    selected.structured.allergies.length > 0
-      ? `过敏史：${selected.structured.allergies.slice(0, 2).join("、")}`
+    (draftCandidate?.allergies.length ?? selected.structured.allergies.length) > 0
+      ? `过敏史：${(draftCandidate?.allergies ?? selected.structured.allergies).slice(0, 2).join("、")}`
       : "确认过敏史",
-    selected.missingFields[0] ? `补充：${selected.missingFields[0]}` : "摘要可用于复诊沟通"
+    activeMissingFields[0] ? `补充：${activeMissingFields[0]}` : "摘要可用于复诊沟通"
   ];
   const checkedCount = reviewRows.filter((row) => checkedRows[`${selected.id}:${row.section}`]).length;
   const evidenceRows = evidenceOrder
@@ -193,21 +315,66 @@ export default function Home() {
     .filter((item): item is EvalEvidenceItem => Boolean(item))
     .filter((item, index, items) => items.findIndex((candidate) => candidate.label === item.label) === index)
     .slice(0, 6);
+  const gateContractValid = service.gateMode === "synthetic_public_only" && service.realDataReady === false;
+  const canWrite = service.state === "online" && gateContractValid && syntheticOnlyConfirmed;
 
   useEffect(() => {
     const controller = new AbortController();
-    const apiBase = process.env.NEXT_PUBLIC_COVAL_API_BASE_URL ?? "http://127.0.0.1:8000";
-
-    async function loadEvidence() {
+    async function loadService() {
+      setService({ state: "connecting" });
       try {
-        const response = await fetch(`${apiBase}/model-evidence`, { signal: controller.signal });
-        if (!response.ok) return;
-        const data = (await response.json()) as {
+        const [healthResponse, evidenceResponse, timelineResponse, membersResponse, capturesResponse] = await Promise.all([
+          fetch(`${apiBase}/health`, { signal: controller.signal }),
+          fetch(`${apiBase}/model-evidence`, { signal: controller.signal }),
+          fetch(`${apiBase}/timeline?member_id=${encodeURIComponent(member.id)}`, { signal: controller.signal }),
+          fetch(`${apiBase}/family-members`, { signal: controller.signal }),
+          fetch(`${apiBase}/ingestions?member_id=${encodeURIComponent(member.id)}`, { signal: controller.signal })
+        ]);
+        const health = await apiJson<{
+          llm_service: string;
+          database: { status: string; schema_version: number };
+          real_data_gate: { mode: string; ready: boolean };
+        }>(healthResponse);
+        const data = await apiJson<{
           base_model: string;
           adapter: string;
           status: string;
           metrics: EvalEvidenceItem[];
-        };
+        }>(evidenceResponse);
+        const timelineData = await apiJson<Array<{
+          id: string;
+          member_id: string;
+          date: string;
+          title: string;
+          detail: string;
+          tag: string;
+          safety: SafetyState;
+          current_version_id: string;
+          version_number: number;
+        }>>(timelineResponse);
+        const memberData = await apiJson<FamilyMember[]>(membersResponse);
+        const captureData = await apiJson<Capture[]>(capturesResponse);
+        setService({
+          state: "online",
+          databaseVersion: health.database.schema_version,
+          provider: health.llm_service,
+          gateMode: health.real_data_gate.mode,
+          realDataReady: health.real_data_gate.ready
+        });
+        setApiError(null);
+        setMembers(memberData);
+        setCaptures(captureData);
+        setTimeline(timelineData.map((item) => ({
+          id: item.id,
+          memberId: item.member_id,
+          date: item.date,
+          title: item.title,
+          detail: item.detail,
+          tag: item.tag,
+          safety: item.safety,
+          currentVersionId: item.current_version_id,
+          versionNumber: item.version_number
+        })));
         setModelEvidence([
           { label: "Base model", value: data.base_model, source: "model" },
           { label: "Default candidate", value: data.adapter, source: data.status },
@@ -217,31 +384,198 @@ export default function Home() {
         ]);
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
+        setService({ state: "offline" });
+        setTimeline([]);
+        setApiError(`本地 API 不可用，写入已禁用。${error instanceof Error ? ` ${error.message}` : ""}`);
       }
     }
 
-    void loadEvidence();
+    void loadService();
     return () => controller.abort();
-  }, []);
+  }, [member.id]);
 
   function chooseMember(nextMemberId: string) {
     const nextSample = samples.find((sample) => sample.memberId === nextMemberId);
     setMemberId(nextMemberId);
-    if (nextSample) setSampleId(nextSample.id);
+    if (nextSample) {
+      setSampleId(nextSample.id);
+      setInputMode(nextSample.inputType === "安全请求" ? "手动记录" : nextSample.inputType);
+      setNoteText(nextSample.note);
+      setSourceLabel(nextSample.source);
+      setEventDate(nextSample.date);
+    }
     setOrganizedSampleId(null);
+    setRecord(null);
+    setDraftCandidate(null);
     setSaved(false);
   }
 
   function chooseSample(sample: HealthSample) {
     setSampleId(sample.id);
-    setInputMode(sample.inputType === "手动记录" || sample.inputType === "安全请求" ? "OCR 文本" : sample.inputType);
+    setInputMode(sample.inputType === "安全请求" ? "手动记录" : sample.inputType);
+    setNoteText(sample.note);
+    setSourceLabel(sample.source);
+    setEventDate(sample.date);
     setOrganizedSampleId(null);
+    setRecord(null);
+    setDraftCandidate(null);
     setSaved(false);
   }
 
-  function organizeRecord() {
-    setOrganizedSampleId(selected.id);
+  async function refreshTimeline() {
+    const response = await fetch(`${apiBase}/timeline?member_id=${encodeURIComponent(member.id)}`);
+    const items = await apiJson<Array<{
+      id: string; member_id: string; date: string; title: string; detail: string;
+      tag: string; safety: SafetyState; current_version_id: string; version_number: number;
+    }>>(response);
+    setTimeline(items.map((item) => ({
+      id: item.id, memberId: item.member_id, date: item.date, title: item.title,
+      detail: item.detail, tag: item.tag, safety: item.safety,
+      currentVersionId: item.current_version_id, versionNumber: item.version_number
+    })));
+  }
+
+  async function refreshCaptures() {
+    const response = await fetch(`${apiBase}/ingestions?member_id=${encodeURIComponent(member.id)}`);
+    setCaptures(await apiJson<Capture[]>(response));
+  }
+
+  function resetOrganizedDraft() {
+    setOrganizedSampleId(null);
+    setRecord(null);
+    setDraftCandidate(null);
     setSaved(false);
+  }
+
+  async function organizeRecord() {
+    if (!canWrite) return;
+    setActionState("organizing");
+    setApiError(null);
+    const body = {
+      member_id: member.id,
+      text: noteText,
+      input_mode: inputModeValue(inputMode),
+      event_date: eventDate || null,
+      source_label: sourceLabel,
+      idempotency_key: stableKey("capture", {
+        memberId: member.id, noteText, inputMode, eventDate, sourceLabel
+      })
+    };
+    try {
+      const result = await apiJson<ApiRecord | CaptureEnvelope>(await fetch(`${apiBase}/ingestions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      }));
+      if ("capture" in result) {
+        setApiError(result.error?.message ?? "原文已保存，正在等待本地模型完成整理。");
+        await refreshCaptures();
+        return;
+      }
+      setRecord(result);
+      setDraftCandidate(result.canonical ?? result.candidate);
+      setOrganizedSampleId(currentDraftKey);
+      setSaved(result.status === "approved");
+      await refreshTimeline();
+      await refreshCaptures();
+    } catch (error) {
+      setApiError(`整理失败；若原文已经持久化，可在“待处理原文”中恢复。${error instanceof Error ? ` ${error.message}` : ""}`);
+    } finally {
+      setActionState("idle");
+    }
+  }
+
+  async function retryCapture(capture: Capture) {
+    if (!canWrite) return;
+    setActionState("organizing");
+    setApiError(null);
+    try {
+      const result = await apiJson<ApiRecord | CaptureEnvelope>(await fetch(
+        `${apiBase}/ingestions/${capture.source_artifact_id}/retry`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ member_id: member.id })
+        }
+      ));
+      if ("capture" in result) {
+        setApiError(result.error?.message ?? "原文仍在处理中。");
+      } else {
+        setRecord(result);
+        setDraftCandidate(result.canonical ?? result.candidate);
+        setNoteText(capture.source.original_text);
+        setSourceLabel(capture.source.label);
+        setEventDate(capture.source.event_date ?? "");
+        setOrganizedSampleId(stableKey("draft", {
+          memberId: member.id,
+          noteText: capture.source.original_text,
+          inputMode,
+          sourceLabel: capture.source.label,
+          eventDate: capture.source.event_date ?? ""
+        }));
+      }
+      await refreshCaptures();
+    } catch (error) {
+      setApiError(`重试失败。${error instanceof Error ? ` ${error.message}` : ""}`);
+    } finally {
+      setActionState("idle");
+    }
+  }
+
+  async function rejectCapture(capture: Capture) {
+    if (!canWrite) return;
+    await apiJson(await fetch(`${apiBase}/ingestions/${capture.source_artifact_id}/reject`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ member_id: member.id })
+    }));
+    await refreshCaptures();
+  }
+
+  async function resumeCapture(capture: Capture) {
+    if (!capture.record_id) return;
+    const nextRecord = await apiJson<ApiRecord>(await fetch(
+      `${apiBase}/records/${capture.record_id}?member_id=${encodeURIComponent(member.id)}`
+    ));
+    setNoteText(capture.source.original_text);
+    setSourceLabel(capture.source.label);
+    setEventDate(capture.source.event_date ?? "");
+    setInputMode("手动记录");
+    setRecord(nextRecord);
+    setDraftCandidate(nextRecord.canonical ?? nextRecord.candidate);
+    setOrganizedSampleId(stableKey("draft", {
+      memberId: member.id,
+      noteText: capture.source.original_text,
+      inputMode: "手动记录",
+      sourceLabel: capture.source.label,
+      eventDate: capture.source.event_date ?? ""
+    }));
+  }
+
+  async function createMember() {
+    const age = Number(newMemberAge);
+    if (!newMemberName.trim() || !Number.isInteger(age) || !canWrite) return;
+    setCreatingMember(true);
+    try {
+      const created = await apiJson<FamilyMember>(await fetch(`${apiBase}/family-members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newMemberName.trim(), relation: "家庭成员", age, profile: "", badges: ["本地档案"]
+        })
+      }));
+      setMembers((items) => [...items, created]);
+      setNewMemberName("");
+      chooseMember(created.id);
+      setNoteText("");
+      setSourceLabel("家庭手动记录");
+      setEventDate(new Date().toISOString().slice(0, 10));
+      setInputMode("手动记录");
+    } catch (error) {
+      setApiError(`新增成员失败。${error instanceof Error ? ` ${error.message}` : ""}`);
+    } finally {
+      setCreatingMember(false);
+    }
   }
 
   function toggleReviewCheck(section: string) {
@@ -249,24 +583,106 @@ export default function Home() {
     setCheckedRows((items) => ({ ...items, [key]: !items[key] }));
   }
 
-  function saveToTimeline() {
-    if (!isOrganized) return;
-    setTimeline((items) => {
-      if (items.some((item) => item.id === `saved-${selected.id}`)) return items;
-      return [
-        {
-          id: `saved-${selected.id}`,
-          memberId: selected.memberId,
-          date: selected.date,
-          title: selected.reportType,
-          detail: selected.summary,
-          tag: selected.inputType,
-          safety: selected.safety
-        },
-        ...items
-      ];
+  function updateReviewField(key: string, value: string) {
+    setDraftCandidate((current) => {
+      if (!current) return current;
+      if (key === "report_type") return { ...current, report_type: value };
+      if (key === "symptoms") {
+        return { ...current, symptoms: splitFields(value).map((text) => ({ text, source_locator: {} })) };
+      }
+      if (key === "medications") {
+        return { ...current, medications: splitFields(value).map((name) => ({ name, event_type: "reported", source_locator: {} })) };
+      }
+      if (key === "missing_fields") return { ...current, missing_fields: splitFields(value) };
+      return current;
     });
-    setSaved(true);
+    setSaved(false);
+  }
+
+  async function saveToTimeline() {
+    if (!isOrganized || !record || !draftCandidate || !canWrite) return;
+    setActionState("saving");
+    setApiError(null);
+    try {
+      let nextRecord: ApiRecord;
+      if (record.status === "candidate") {
+        const editBody = {
+          member_id: member.id,
+          base_candidate_id: record.candidate_id,
+          base_candidate_revision: record.candidate_revision,
+          candidate: draftCandidate,
+          idempotency_key: stableKey(
+            `candidate-${record.id}-${record.candidate_id}-r${record.candidate_revision}`,
+            draftCandidate
+          )
+        };
+        const edited = await apiJson<ApiRecord>(await fetch(`${apiBase}/records/${record.id}/candidate`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(editBody)
+        }));
+        nextRecord = await apiJson<ApiRecord>(await fetch(`${apiBase}/records/${record.id}/approve`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            member_id: member.id,
+            candidate_id: edited.candidate_id,
+            candidate_revision: edited.candidate_revision,
+            idempotency_key: `approve-${record.id}-${edited.candidate_id}`
+          })
+        }));
+      } else {
+        nextRecord = await apiJson<ApiRecord>(await fetch(`${apiBase}/records/${record.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            member_id: member.id,
+            base_version_id: record.current_version_id,
+            record: draftCandidate,
+            idempotency_key: stableKey(`record-${record.id}-${record.current_version_id}`, draftCandidate)
+          })
+        }));
+      }
+      setRecord(nextRecord);
+      setDraftCandidate(nextRecord.canonical ?? nextRecord.candidate);
+      setSaved(true);
+      await refreshTimeline();
+    } catch (error) {
+      setApiError(`保存失败；页面不会显示假成功。${error instanceof Error ? ` ${error.message}` : ""}`);
+    } finally {
+      setActionState("idle");
+    }
+  }
+
+  async function undoLastEdit() {
+    if (!record?.current_version_id || (record.version_number ?? 0) <= 1 || !canWrite) return;
+    setActionState("undoing");
+    setApiError(null);
+    try {
+      const versions = await apiJson<Array<{ id: string; version_number: number }>>(
+        await fetch(`${apiBase}/records/${record.id}/versions?member_id=${encodeURIComponent(member.id)}`)
+      );
+      const target = versions.find((item) => item.version_number === (record.version_number ?? 1) - 1);
+      if (!target) throw new Error("找不到上一版本");
+      const nextRecord = await apiJson<ApiRecord>(await fetch(`${apiBase}/records/${record.id}/undo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          member_id: member.id,
+          base_version_id: record.current_version_id,
+          target_version_id: target.id,
+          idempotency_key: `undo-${record.id}-${record.current_version_id}-${target.id}`
+        })
+      }));
+      setRecord(nextRecord);
+      setDraftCandidate(nextRecord.canonical);
+      setSaved(true);
+      await refreshTimeline();
+    } catch (error) {
+      setApiError(`撤销失败，历史版本未被覆盖。${error instanceof Error ? ` ${error.message}` : ""}`);
+    } finally {
+      setActionState("idle");
+    }
   }
 
   return (
@@ -298,7 +714,7 @@ export default function Home() {
 
         <section className="family-switcher" aria-label="家庭成员">
           <div className="rail-heading">家庭成员</div>
-          {familyMembers.map((item) => (
+          {members.map((item) => (
             <button
               className={item.id === member.id ? "family-row active" : "family-row"}
               key={item.id}
@@ -312,11 +728,31 @@ export default function Home() {
               </span>
             </button>
           ))}
+          <div className="member-create">
+            <input
+              aria-label="虚构成员名称"
+              onChange={(event) => setNewMemberName(event.target.value)}
+              placeholder="虚构成员名称"
+              value={newMemberName}
+            />
+            <input
+              aria-label="新成员年龄"
+              inputMode="numeric"
+              min="0"
+              max="130"
+              onChange={(event) => setNewMemberAge(event.target.value)}
+              type="number"
+              value={newMemberAge}
+            />
+            <button disabled={creatingMember || !canWrite} onClick={createMember} type="button">
+              {creatingMember ? "添加中" : "添加"}
+            </button>
+          </div>
         </section>
 
         <p className="privacy-note" id="privacy-boundary">
           <ShieldCheck size={16} />
-          公开演示只使用 synthetic/public-safe 样例；真实家庭资料留在本地。
+          本公开版本仅允许 synthetic/public-safe 样例；禁止输入真实家庭或患者资料。
         </p>
       </aside>
 
@@ -333,21 +769,25 @@ export default function Home() {
           </div>
           <div className="strip-status">
             <SlidersHorizontal size={16} />
-            本地演示视图
+            {service.state === "online"
+              ? `API 已连接 · SQLite v${service.databaseVersion} · 推理 ${service.provider}`
+              : service.state === "connecting"
+                ? "正在连接本地 API"
+                : "API 离线 · 写入已禁用"}
           </div>
         </header>
 
         <header className="mobile-header">
           <select className="mobile-member-select" onChange={(event) => chooseMember(event.target.value)} value={member.id}>
-            {familyMembers.map((item) => (
+            {members.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.name}
               </option>
             ))}
           </select>
           <strong>新建记录</strong>
-          <button disabled={!isOrganized || saved} type="button" onClick={saveToTimeline}>
-            {saved ? "已保存" : "保存"}
+          <button disabled={!isOrganized || saved || actionState !== "idle" || !canWrite} type="button" onClick={saveToTimeline}>
+            {actionState === "saving" ? "保存中" : saved ? "已保存" : "保存"}
           </button>
         </header>
 
@@ -358,15 +798,32 @@ export default function Home() {
                 <h2>新建记录</h2>
                 <p>只整理信息，不替代诊断或用药建议。</p>
               </div>
-              <span className={`state-label ${safetyTone[selected.safety]}`}>{safetyLabel[selected.safety]}</span>
+              <span className={`state-label ${safetyTone[activeSafety]}`}>{safetyLabel[activeSafety]}</span>
             </div>
+
+            <label className="synthetic-gate">
+              <input
+                aria-label="仅使用虚构或公开数据"
+                checked={syntheticOnlyConfirmed}
+                disabled={!gateContractValid || service.state !== "online"}
+                onChange={(event) => setSyntheticOnlyConfirmed(event.target.checked)}
+                type="checkbox"
+              />
+              <span>
+                <strong>仅限虚构或公开数据</strong>
+                本版本禁止输入真实姓名、报告、症状、用药或家庭资料；数据库与备份未加密，且没有鉴权。
+              </span>
+            </label>
 
             <div className="mode-control" role="tablist" aria-label="输入方式">
               {inputModes.map((mode) => (
                 <button
                   className={inputMode === mode.label ? "active" : ""}
                   key={mode.label}
-                  onClick={() => setInputMode(mode.label)}
+                  onClick={() => {
+                    setInputMode(mode.label);
+                    resetOrganizedDraft();
+                  }}
                   type="button"
                 >
                   <mode.icon size={16} />
@@ -375,6 +832,7 @@ export default function Home() {
               ))}
             </div>
             <p className="mode-hint">{modeHints[inputMode]}</p>
+            {apiError ? <p className="api-error" role="alert">{apiError}</p> : null}
 
             <div className="record-facts" aria-label="记录来源和待补信息">
               {intakeFacts.map((fact) => (
@@ -385,7 +843,42 @@ export default function Home() {
               ))}
             </div>
 
-            <textarea aria-label="健康记录内容" readOnly value={selected.note} />
+            <div className="record-meta-inputs">
+              <label>
+                <span>来源</span>
+                <input
+                  aria-label="记录来源"
+                  maxLength={160}
+                  onChange={(event) => {
+                    setSourceLabel(event.target.value);
+                    resetOrganizedDraft();
+                  }}
+                  value={sourceLabel}
+                />
+              </label>
+              <label>
+                <span>事件日期</span>
+                <input
+                  aria-label="事件日期"
+                  onChange={(event) => {
+                    setEventDate(event.target.value);
+                    resetOrganizedDraft();
+                  }}
+                  type="date"
+                  value={eventDate}
+                />
+              </label>
+            </div>
+
+            <textarea
+              aria-label="健康记录内容"
+              maxLength={8000}
+              onChange={(event) => {
+                setNoteText(event.target.value);
+                resetOrganizedDraft();
+              }}
+              value={noteText}
+            />
 
             <div className="sample-tabs" aria-label="演示样例">
               {memberSamples.map((sample) => (
@@ -400,6 +893,31 @@ export default function Home() {
               ))}
             </div>
 
+            {captures.some((item) => ["captured", "processing", "failed_retryable", "needs_review"].includes(item.state)) ? (
+              <section className="capture-inbox" aria-label="待处理原文">
+                <strong>待处理原文</strong>
+                {captures
+                  .filter((item) => ["captured", "processing", "failed_retryable", "needs_review"].includes(item.state))
+                  .slice(0, 3)
+                  .map((item) => (
+                    <article key={item.source_artifact_id}>
+                      <span>{item.source.label} · {item.state}</span>
+                      <small>{firstSentence(item.source.original_text)}</small>
+                      <div>
+                        {item.state === "needs_review" ? (
+                          <button onClick={() => void resumeCapture(item)} type="button">继续审核</button>
+                        ) : item.retryable ? (
+                          <button disabled={actionState !== "idle" || !canWrite} onClick={() => void retryCapture(item)} type="button">重试</button>
+                        ) : null}
+                        {item.state !== "processing" || item.retryable ? (
+                          <button disabled={!canWrite} onClick={() => void rejectCapture(item)} type="button">拒绝</button>
+                        ) : null}
+                      </div>
+                    </article>
+                  ))}
+              </section>
+            ) : null}
+
             <div className="record-needline" aria-label="保存前核对">
               <span>保存前核对</span>
               <strong>{selected.missingFields[0] ?? "暂无待补字段"}</strong>
@@ -410,9 +928,14 @@ export default function Home() {
                 <FileScan size={16} />
                 本地 OCR 待接入
               </button>
-              <button className="primary-button" onClick={organizeRecord} type="button">
+              <button
+                className="primary-button"
+                disabled={!canWrite || actionState !== "idle" || !noteText.trim() || !sourceLabel.trim()}
+                onClick={organizeRecord}
+                type="button"
+              >
                 <ClipboardCheck size={16} />
-                {isOrganized ? "重新整理" : "智能整理"}
+                {actionState === "organizing" ? "整理中" : isOrganized ? "重新整理" : "智能整理"}
               </button>
             </div>
           </section>
@@ -421,17 +944,44 @@ export default function Home() {
             <div className="panel-title">
               <div>
                 <h2>家庭记忆复核</h2>
-                <p>先把碎片整理成可核对事实，再进入本地家庭健康记忆。</p>
+                <p>先把虚构/公开样例整理成可核对事实，再进入本地演示记忆。</p>
               </div>
-              <button className="secondary-button" disabled={!isOrganized || saved} onClick={saveToTimeline} type="button">
-                <Save size={16} />
-                {saved ? "已保存" : "确认保存到健康记忆"}
-              </button>
+              <div className="review-actions">
+                <button
+                  className="secondary-button"
+                  disabled={!record?.current_version_id || (record.version_number ?? 0) <= 1 || actionState !== "idle" || !canWrite}
+                  onClick={undoLastEdit}
+                  type="button"
+                >
+                  <RotateCcw size={16} />
+                  {actionState === "undoing" ? "撤销中" : "撤销到上一版"}
+                </button>
+                <button
+                  className="secondary-button"
+                  disabled={!isOrganized || saved || actionState !== "idle" || !canWrite}
+                  onClick={saveToTimeline}
+                  type="button"
+                >
+                  <Save size={16} />
+                  {actionState === "saving" ? "服务器保存中" : saved ? `已保存 v${record?.version_number ?? 1}` : "确认保存到健康记忆"}
+                </button>
+              </div>
             </div>
 
             <section className="doctor-brief" aria-label="给医生看的摘要">
               <span>给医生看的摘要</span>
-              <p>{isOrganized ? selected.summary : "点击智能整理后，这里会生成可带去复诊的摘要。"}</p>
+              {isOrganized && draftCandidate ? (
+                <textarea
+                  aria-label="医生摘要"
+                  onChange={(event) => {
+                    setDraftCandidate({ ...draftCandidate, summary: event.target.value });
+                    setSaved(false);
+                  }}
+                  value={draftCandidate.summary}
+                />
+              ) : (
+                <p>点击智能整理后，这里会生成可带去复诊的摘要。</p>
+              )}
             </section>
 
             <div className="memo-flow" aria-label="AI memo workflow">
@@ -460,7 +1010,15 @@ export default function Home() {
                     <div className="review-row" role="row" key={row.section}>
                       <strong>{row.section}</strong>
                       <span>{row.source}</span>
-                      <span>{row.field}</span>
+                      {row.editable ? (
+                        <input
+                          aria-label={`${row.section} 结构化字段`}
+                          onChange={(event) => updateReviewField(row.key, event.target.value)}
+                          value={row.field}
+                        />
+                      ) : (
+                        <span>{row.field}</span>
+                      )}
                       <span className="row-status">{isChecked ? "家人已核对" : row.status}</span>
                       <button className={isChecked ? "verified" : ""} onClick={() => toggleReviewCheck(row.section)} type="button">
                         {isChecked ? "已核对" : row.status === "待补充" ? "补充" : "核对"}
@@ -484,8 +1042,10 @@ export default function Home() {
                 <span>安全边界</span>
                 <ShieldCheck size={17} />
               </div>
-              <strong className={safetyTone[selected.safety]}>{safetyLabel[selected.safety]}</strong>
-              <p>{safetyCopy[selected.safety]}</p>
+              <strong className={safetyTone[activeSafety]}>{safetyLabel[activeSafety]}</strong>
+              <p role={activeSafety === "escalated" ? "alert" : undefined}>
+                {draftCandidate?.safety.message ?? safetyCopy[activeSafety]}
+              </p>
             </section>
 
             <section className="inspector-block visit-prep-block">
@@ -506,9 +1066,9 @@ export default function Home() {
                 <Activity size={17} />
               </div>
               <div className="missing-checklist">
-                <strong>{selected.missingFields.length > 0 ? `待补 ${selected.missingFields.length} 项` : "信息完整"}</strong>
+                <strong>{activeMissingFields.length > 0 ? `待补 ${activeMissingFields.length} 项` : "信息完整"}</strong>
                 <ul>
-                  {selected.missingFields.slice(0, 3).map((field) => (
+                  {activeMissingFields.slice(0, 3).map((field) => (
                     <li key={field}>{field}</li>
                   ))}
                 </ul>
@@ -521,14 +1081,14 @@ export default function Home() {
                 <HeartPulse size={17} />
                 <span>
                   <strong>每日血压记录</strong>
-                  08:30 提醒
+                  计划中 · 调度器未接入
                 </span>
               </div>
               <div className="automation-row">
                 <Bell size={17} />
                 <span>
                   <strong>家庭周报</strong>
-                  周日生成
+                  计划中 · worker 未接入
                 </span>
               </div>
             </section>
@@ -580,10 +1140,17 @@ export default function Home() {
           {visibleTimeline.slice(0, 3).map((item) => (
             <article key={item.id}>
               <time>{item.date}</time>
-              <strong>{item.title}</strong>
+              <strong>{item.title}{item.versionNumber ? ` · v${item.versionNumber}` : ""}</strong>
               <span>{item.detail}</span>
             </article>
           ))}
+          {visibleTimeline.length === 0 ? (
+            <article>
+              <time>尚无记录</time>
+              <strong>{service.state === "online" ? "等待确认保存" : "API 离线"}</strong>
+              <span>只有服务器确认后的记录才会出现在这里。</span>
+            </article>
+          ) : null}
         </section>
       </section>
     </main>

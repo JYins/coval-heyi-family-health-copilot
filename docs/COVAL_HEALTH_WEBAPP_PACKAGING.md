@@ -360,7 +360,9 @@ Only after the demo is stable:
 - add `safety_events`
 - optionally add vector search for public/synthetic health records
 
-Do not use real family data unless the privacy policy is explicitly redesigned.
+The current build prohibits real family/patient data. Real-data testing may be
+considered only after every gate in `docs/THREAT_MODEL.md` passes and a separate
+real-data build is explicitly approved; a policy rewrite alone is insufficient.
 
 ## First Screen Design Direction
 

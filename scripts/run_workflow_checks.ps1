@@ -2,6 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $root
+$pycachePath = Join-Path $env:TEMP "coval-health-workflow-pycache"
 
 function Run-Command {
     param(
@@ -19,8 +20,16 @@ Run-Command "workflow policy check" {
     python scripts\check_workflow.py
 }
 
+Run-Command "local provider audit compile" {
+    python -X "pycache_prefix=$pycachePath" -m py_compile scripts\benchmark_local_provider.py scripts\compare_local_inference.py scripts\compare_phase2b_safety_intent.py scripts\verify_adapter_effect.py eval\run_safety_intent_eval.py src\inference\providers.py
+}
+
 Run-Command "python compile" {
-    python -m py_compile scripts\compare_medication_contrast.py scripts\compare_sft_smoke_eval.py scripts\compare_sft_v1_eval.py scripts\compare_sft_v1_constrained.py scripts\compare_sft_v2_eval.py scripts\compare_sft_v2_template_patch.py scripts\compare_sft_v3_eval.py scripts\download_public_datasets.py scripts\prefetch_hf_assets.py scripts\heartbeat_report.py scripts\check_workflow.py scripts\go_no_go_report.py scripts\narval_paramiko_setup.py scripts\project_gap_report.py scripts\recover_predictions_from_raw_outputs.py scripts\run_rag_retrieval_eval.py scripts\summarize_baseline.py scripts\summarize_v1_1_gaps.py scripts\summarize_sft_v2_template_patch_gaps.py scripts\validate_predictions.py scripts\validate_sft_smoke_dataset.py scripts\normalize_predictions.py scripts\normalize_report_types.py scripts\template_doctor_summary.py eval\metrics_crisis.py eval\metrics_extract.py eval\metrics_risk.py eval\metrics_safety.py eval\metrics_summary.py eval\run_eval.py src\prediction_normalization.py src\product_spine.py train\build_sft_smoke_dataset.py train\build_sft_v1_dataset.py train\build_sft_v2_dataset.py train\build_sft_v3_dataset.py train\run_baseline.py train\train_sft.py
+    python -X "pycache_prefix=$pycachePath" -m py_compile scripts\benchmark_local_provider.py scripts\compare_medication_contrast.py scripts\compare_sft_smoke_eval.py scripts\compare_sft_v1_eval.py scripts\compare_sft_v1_constrained.py scripts\compare_sft_v2_eval.py scripts\compare_sft_v2_template_patch.py scripts\compare_sft_v3_eval.py scripts\download_public_datasets.py scripts\prefetch_hf_assets.py scripts\heartbeat_report.py scripts\check_workflow.py scripts\go_no_go_report.py scripts\narval_paramiko_setup.py scripts\project_gap_report.py scripts\recover_predictions_from_raw_outputs.py scripts\run_rag_retrieval_eval.py scripts\summarize_baseline.py scripts\summarize_v1_1_gaps.py scripts\summarize_sft_v2_template_patch_gaps.py scripts\validate_predictions.py scripts\validate_sft_smoke_dataset.py scripts\normalize_predictions.py scripts\normalize_report_types.py scripts\template_doctor_summary.py eval\metrics_crisis.py eval\metrics_extract.py eval\metrics_risk.py eval\metrics_safety.py eval\metrics_summary.py eval\run_eval.py src\prediction_normalization.py src\product_spine.py src\health_memory\database.py src\health_memory\store.py src\inference\providers.py src\serve\api_schemas.py src\serve\demo_structuring.py src\serve\evidence.py src\serve\memory_api.py src\serve\coval_health_api.py train\build_sft_smoke_dataset.py train\build_sft_v1_dataset.py train\build_sft_v2_dataset.py train\build_sft_v3_dataset.py train\run_baseline.py train\train_sft.py
+}
+
+Run-Command "durable health memory tests" {
+    .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 }
 
 $gitBash = "C:\Program Files\Git\bin\bash.exe"
