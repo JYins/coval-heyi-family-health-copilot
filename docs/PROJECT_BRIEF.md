@@ -149,7 +149,9 @@
 3. **搭产品脊柱**：围绕 baseline 模型，把 `OCR/ASR → 抽取 → 时间线 → 摘要 → 升级` 用 2–3 份**假报告**在本地端到端跑通。此时已有能跑的产品，还没微调。
 4. **A100 产品优先微调**：不要先扫大矩阵。先用 7B baseline 暴露产品 blocker，再训练一个 7B LoRA/QLoRA SFT 主 adapter（公开/合成数据，优先 extraction + safety，必要时混入 summary）。重跑 eval，并把 adapter 接回本地假数据产品链路；能改善产品脊柱才算 Phase 4 成功。
 5. **触发式复杂度与消融**：只有当主 adapter 的 failure 支持时才加复杂组件：structured JSON constrained decoding 用来解决 malformed JSON；failure-driven data augmentation 用来修复重复失败类型；rank 8/16/32 或数据量 1k/5k/20k 用来回答欠拟合/过拟合/数据效率问题；14B QLoRA 用来回答 7B 达不到的模型容量问题；safety refusal DPO/ORPO 只在已有 chosen/rejected 安全偏好数据后再上。不要为了显得高级而堆全参训练。
-6. **本地私有部署**：把验证过的模型用到我妈的真实数据上（私有层，遵守 5.1）。
+6. **真实数据门禁（当前禁止）**：本 build 只允许合成/公开数据。只有
+   `docs/THREAT_MODEL.md` 的全部门禁通过、并另行审批独立 real-data build
+   后，才可讨论真实家庭数据试用；仅“留在本机”不构成许可。
 7. **RAG 扩展**：PubMed / 公开 guideline / 健康资源 + FAISS/Chroma，做带引用的可靠解释，跑第 7 节第 8 组指标。
 
 **Go/No-Go 检查点**：step 1–3 跑完（约第一阶段末）做一次评审——脊柱能跑通、baseline 数字合理、gold set 站得住，才进入 step 4 微调。

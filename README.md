@@ -1,6 +1,6 @@
 # Coval HeYi: Family Health Memory Copilot
 
-Coval HeYi is a private-first Chinese family health memory copilot. It turns messy family health notes, OCR report text, voice notes, medication records, daily blood-pressure logs, and symptom updates into structured records, doctor-facing summaries, safety prompts, reminders, and weekly family updates.
+Coval HeYi is a private-first Chinese family health memory copilot prototype. This public build is synthetic/public-safe only: it turns fictional health notes and blood-pressure/symptom updates into reviewable structured records, doctor-facing summaries, and safety prompts. OCR/ASR, reminders, and weekly reports remain planned product stages.
 
 It is not a diagnosis or medication-advice system. The product organizes information and helps prepare clinician conversations.
 
@@ -11,11 +11,11 @@ It is not a diagnosis or medication-advice system. The product organizes informa
 ## What This Project Shows
 
 - A product story grounded in the author's earlier Coval AI memo work, clinic/Phlox workflow thinking for doctor-facing services, and a family need: keeping up with frequent checkups, reports, medication notes, and daily blood-pressure records at home.
-- A local product spine for family health memory: record capture, structuring, timeline, doctor summary, safety boundary, daily blood-pressure entry, and weekly report entry.
-- OCR/ASR intake design for the software service: report photos/PDFs/pasted OCR text and voice symptom notes flow into the same review-before-save medical structuring contract.
+- A migration-backed local product spine for synthetic family health memory: capture-first immutable source evidence, leased failure recovery, candidate review, server-confirmed save, append-only versions, timeline reload, safety evidence, and undo.
+- An OCR/ASR intake design for the future software service; the current UI exposes labeled stubs and does not process files or audio.
 - An evaluation-first LoRA/QLoRA workflow for Chinese medical-record structuring.
 - Public/synthetic-only training and evaluation artifacts suitable for a private GitHub/Hugging Face trace.
-- A measured model story: SFT v2 plus deterministic summary rendering is the current default; SFT v3 was completed as an ablation and rejected because it did not improve the default candidate.
+- A measured model story: the v2 adapter is integrated but deployment-blocked; SFT v3 and a Phase 2b prompt candidate were evaluated and rejected. The product default remains `mock-rules-v2` plus deterministic safety controls.
 
 ## Product Origin
 
@@ -23,7 +23,7 @@ Coval began as an AI memory product: collect fragmented context, preserve useful
 
 The product direction also borrows discipline from clinic/Phlox work: healthcare AI should be a reviewable workflow, not a loose chatbot. The useful loop is capture -> structure -> verify -> save -> summarize for the next care conversation.
 
-The family-facing motivation is practical. A parent who often goes for checkups may accumulate lab reports, appointment notes, medication changes, and daily blood-pressure readings faster than the family can organize them. Coval HeYi is designed as a local home-running health memory layer that keeps those facts structured and ready for doctor visits while keeping real family data off cloud services, GitHub, Hugging Face, and training jobs.
+The future family-facing motivation is practical. A parent who often goes for checkups may accumulate lab reports, appointment notes, medication changes, and daily blood-pressure readings faster than the family can organize them. The intended product direction is a local home-running memory layer, but this build must not receive real family or patient data until every threat-model gate passes.
 
 ## Current UI
 
@@ -31,9 +31,11 @@ The web UI is a Next.js app under `apps/coval-health-web`.
 
 - Desktop: a one-viewport family health workbench with record intake, smart organization, family review confirmation, doctor-facing summary, missing-info checklist, visit-prep checklist, safety boundary, and compact project evidence.
 - Mobile: an iOS-like `New Record` page that opens directly on the recording workflow, with member selection, OCR/voice/blood-pressure modes, source/date/missing-field context, smart organization, and save-after-review state.
-- The demo now separates `Smart organize` from `Confirm save to health memory`, so the UI shows the real caregiver loop: capture -> organize -> family verifies -> save -> bring summary to the doctor.
+- The UI accepts arbitrary editable fictional notes, members, dates, and source labels and calls the local FastAPI/SQLite service for the implemented synthetic workflow: persist source -> organize/recover -> edit/review -> approve -> versioned timeline -> undo.
+- Failed local-model work remains visible in a recovery inbox. Atomic leases prevent concurrent retries from both becoming canonical memory, and rejection invalidates late model output.
+- API/database/provider states are visible. If the API is offline, writes are disabled rather than silently falling back to an in-memory success state.
 - Demo-only hooks such as local OCR/PDF intake are clearly labeled and do not read real files in the public example.
-- Screenshots in `docs/assets/` are current Playwright captures of the latest desktop and mobile UI.
+- Screenshots in `docs/assets/` are browser captures regenerated on 2026-08-24 from the tested desktop and mobile flows.
 
 ## OCR And ASR Service Design
 
@@ -56,55 +58,118 @@ Production implementation should prefer local OCR/ASR engines for private mode, 
 - Real family medical data must not enter Git, Hugging Face, logs, cloud services, Narval jobs, or training data.
 - The assistant does not diagnose, prescribe, adjust medication dosage, or reassure users that care is unnecessary.
 - Crisis symptoms should trigger escalation guidance rather than severity judgment.
+- `COVAL_REAL_DATA_MODE=1` is an explicit opt-in fail-closed sentinel. It cannot determine whether pasted content is real; the UI therefore requires synthetic-only acknowledgement. Real use remains blocked on full-database/WAL encryption, OS key custody and recovery, authentication, encrypted backup, verified purge, and a fixed/pinned SQLite Windows package.
+
+See [the architecture](docs/ARCHITECTURE.md), [threat model](docs/THREAT_MODEL.md),
+[claim ledger](docs/CLAIM_LEDGER.md), and [90-second demo](docs/DEMO_90S.md).
 
 ## Local Web Demo
 
-```powershell
-cd D:\lora\apps\coval-health-web
-npm install
-npm run dev
-```
-
-Open:
-
-```text
-http://127.0.0.1:3000
-```
-
-Optional API evidence endpoint:
+Install once:
 
 ```powershell
-cd D:\lora
+cd <repo-root>
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+cd apps\coval-health-web
+npm.cmd ci
+```
+
+Start the API in terminal 1:
+
+```powershell
+cd <repo-root>
 .\.venv\Scripts\python.exe -m uvicorn src.serve.coval_health_api:app --host 127.0.0.1 --port 8000
 ```
 
-The frontend falls back to static synthetic evidence if the API is not running.
+Start the web app in terminal 2:
+
+```powershell
+cd <repo-root>\apps\coval-health-web
+npm.cmd run dev
+```
+
+Open `http://127.0.0.1:3000`. The frontend may retain packaged research-evidence
+text while offline, but it shows the failure and disables every durable write.
+The default development database is `data/local/coval_health.sqlite` and is
+ignored by Git; set `COVAL_DATA_DIR` or `COVAL_HEALTH_DB_PATH` to override it.
+
+## Portable Vault Backup And FHIR Export
+
+The vault CLI works without a model. It creates a consistent SQLite snapshot,
+adds a SHA-256/byte-count manifest and one FHIR R4 document Bundle per family
+member, verifies the package, and restores only into a clean database path:
+
+```powershell
+cd <repo-root>
+.\.venv\Scripts\python.exe scripts\manage_vault.py backup `
+  --database data\local\coval_health.sqlite `
+  --output backups\synthetic-demo.coval `
+  --acknowledge-synthetic-only-unencrypted
+.\.venv\Scripts\python.exe scripts\manage_vault.py verify `
+  --archive backups\synthetic-demo.coval
+.\.venv\Scripts\python.exe scripts\manage_vault.py restore `
+  --archive backups\synthetic-demo.coval `
+  --database <clean-synthetic-restore-path>\coval_health.sqlite `
+  --acknowledge-synthetic-only-unencrypted
+```
+
+The v1 archive is intentionally marked `encryption: none` and every writing CLI
+requires an explicit synthetic-only acknowledgement. It is a tested portability/
+recovery foundation for demo data only. Even if the storage location is separately
+encrypted, this build and vault v1 remain prohibited for real family/patient data
+until every threat-model gate passes.
+
+## Key Engineering Decisions
+
+- [ADR 0001](docs/adr/0001-capture-first-leased-processing.md): persist source before inference; run the provider outside the SQLite write transaction; attach only with a live lease token.
+- [ADR 0002](docs/adr/0002-review-before-canonical-memory.md): machine candidates never enter the timeline without review; edits and undo append versions.
+- [ADR 0003](docs/adr/0003-model-gates-over-model-optimism.md): a connected model is not promoted when frozen safety/comparator gates fail.
+- [ADR 0004](docs/adr/0004-vault-v1-is-portability-not-privacy.md): tested recovery is kept separate from encryption/authenticity claims.
 
 ## Validation
 
 ```powershell
-cd D:\lora\apps\coval-health-web
-npm.cmd run typecheck
-npm.cmd run lint
-npm.cmd run build
+cd <repo-root>
+powershell -ExecutionPolicy Bypass -File scripts\run_local_quality.ps1
 ```
 
-Full project smoke checks:
+Use `-Install` to install dependencies and `-SkipBrowser` to omit Playwright.
+The standard entry runs policy checks, backend/API/process-restart tests,
+frontend lint/typecheck/build, and browser E2E. The longer research smoke suite is:
 
 ```powershell
-cd D:\lora
+cd <repo-root>
 powershell -ExecutionPolicy Bypass -File scripts\run_workflow_checks.ps1
 ```
 
+The optional model runtime is isolated from the lightweight web/test environment:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\setup_local_model_runtime.ps1
+$env:COVAL_MODEL_PROVIDER = "transformers_adapter"
+$env:COVAL_MODEL_BASE_PATH = "<local-model-path>"
+$env:COVAL_MODEL_ADAPTER_PATH = "<local-adapter-path>"
+$env:COVAL_TRANSFORMERS_LOAD_IN_4BIT = "true"
+```
+
+Model providers require explicit local paths, force Hugging Face offline mode,
+and never fall back silently to mock. `scripts/benchmark_local_provider.py`
+adds a non-loopback socket guard for the fixed synthetic latency/quality run.
+`transformers_base` is an adapter-off causal benchmark only;
+`scripts/compare_local_inference.py` compares it with mock, local v2, and the
+recorded historical v2 metrics.
+
 ## Model And Eval Status
 
-Current default candidate:
+Historical evidence-backed candidate:
 
 ```text
 Qwen/Qwen2.5-7B-Instruct + LoRA SFT v2 + deterministic summary template
 ```
 
-Current public/synthetic eval highlights:
+Historical small-slice synthetic eval highlights (`n=10`, `n=4`, and `n=6`
+respectively; these are controlled regression slices, not clinical validation):
 
 | Slice | Extraction F1 | Relaxed summary | Safety refusal | Crisis recall |
 | --- | ---: | ---: | ---: | ---: |
@@ -116,22 +181,40 @@ SFT v3 was trained and evaluated, but it is not the default candidate. It matche
 
 See:
 
+- `docs/CURRENT_STATE.md`
+- `docs/DURABLE_PRODUCT_SPINE.md`
+- `docs/PRODUCTIZATION_ROADMAP_2026_08.md`
+- `docs/PHASE_0_1_INTERNAL_REVIEW.md`
+- `docs/PHASE_2_LOCAL_INFERENCE.md`
+- `docs/INSPIRATION_AND_LICENSES.md`
 - `docs/experiment_log.md`
 - `docs/error_analysis.md`
 - `docs/INTERVIEW_DEFENSE.md`
-- `results/sft_v2_eval_template_patch/comparison.md`
-- `results/sft_v3_eval/comparison_vs_v2_template_patch.md`
+- `docs/PHASE_2_LOCAL_INFERENCE.md`
+- `docs/PHASE_2B_SAFETY_INTENT.md`
+- `artifacts/public/phase2_local_inference/evidence_summary.json`
+- `artifacts/public/phase2b_safety_intent/evidence_summary.json`
 
 ## Honest Current Scope
 
 This repo is intentionally framed as an evaluation-first product prototype, not a production medical agent.
 
 - The headline LoRA result is a failure-driven small-sample SFT. `sft_v2` has 26 synthetic hand-authored rows: 20 train and 6 validation. The training loop was short, about 14.48 seconds and 3 global steps. The improvement is real in this controlled harness, but the claim is about data quality, failure targeting, and evaluation discipline rather than dataset scale.
-- The local product layer is a Next.js/FastAPI/SQLite demo over synthetic examples. It shows record structuring, timeline memory, doctor-prep summaries, safety gates, daily blood-pressure entry, OCR/ASR intake design, and weekly-report hooks.
+- The local product layer is a Next.js/FastAPI/SQLite prototype over synthetic examples. Its durable path now has migrations, capture-before-inference, retry leases, immutable sources, candidate approval, versions, idempotency, audit/safety evidence, process-restart recovery, and browser-tested undo.
+- The default structuring provider is still `mock-rules-v2`. The API now has
+  explicit `transformers_base`, `transformers_adapter`, and `llama_cpp`
+  boundaries. Real local v2 NF4 inference and browser/SQLite E2E are connected
+  and measured. The frozen same-local unquantized comparator does not fit this
+  GPU, so that quantization gate is not evaluable; false refusals and
+  descriptive historical gaps block deployment, and the candidate is therefore
+  not the default. Real OCR/ASR,
+  reminder workers, daily check-ins, weekly reports, PDFs, and encrypted backups
+  are not implemented. A checksum-verified **unencrypted** local vault backup,
+  clean-path restore, and FHIR R4 export are implemented and regression-tested.
 - It is not yet a complete RAG agent. Phase 6 has started with a retrieval-first smoke harness over a tiny synthetic/public-safe corpus: 7 source snippets, 8 labeled queries, Recall@1/3 and MRR, plus no-answer calibration.
-- It is not yet a llama.cpp/GGUF local-inference deployment. A fully local 7B adapter path is a design target and feasible packaging direction, but it should not be described as completed deployment.
+- It is not yet a llama.cpp/GGUF local-inference deployment. The Transformers/PEFT NF4 path is real; the GGUF boundary remains unexecuted.
 
-Safe resume wording: `Built an evaluation-first Chinese medical-record structuring system with Qwen2.5-7B LoRA, synthetic/public gold sets, safety/crisis metrics, and a local Next.js/FastAPI/SQLite family-health memory demo.`
+Safe resume wording after clean-clone CI passes: `Built a synthetic-only local family-health memory platform with immutable source provenance, capture-first failure recovery, review-before-save, append-only versions, tested backup/restore, deterministic safety controls, conservative FHIR R4 mapping, and model gates that rejected unsafe candidates.`
 
 Avoid overclaiming: do not describe the current project as a large-scale medical dataset, a deployed clinical decision system, a production RAG agent, or a completed GGUF/llama.cpp local runtime.
 
@@ -166,7 +249,7 @@ Do not paste or commit tokens. Log in interactively.
 Local CLI check:
 
 ```powershell
-cd D:\lora
+cd <repo-root>
 powershell -ExecutionPolicy Bypass -File scripts\hf_local_login.ps1
 powershell -ExecutionPolicy Bypass -File scripts\hf_local_login.ps1 -WhoamiOnly
 ```
@@ -213,8 +296,10 @@ npm.cmd run build
 ## Repository Map
 
 - `apps/coval-health-web` - Next.js family-facing web UI.
-- `src/serve/coval_health_api.py` - local FastAPI evidence/demo API.
-- `src/product_spine.py` - synthetic-data product spine.
+- `src/serve/coval_health_api.py` - compatibility entrypoint for the durable local API.
+- `src/serve/memory_api.py` - persistent health-memory routes and contracts.
+- `src/health_memory/` - migrations, SQLite invariants, versions, idempotency, and projections.
+- `src/product_spine.py` - replace-on-run synthetic evaluation smoke tool, not canonical product storage.
 - `eval/` - gold sets and metrics.
 - `train/` - SFT dataset builders and training entry points.
 - `scripts/` - Narval, Hugging Face, eval, and workflow utilities.

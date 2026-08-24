@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "artifact_id": "coval-heyi-phase2-local-inference-historical-v1",
+  "evidence_status": "HISTORICAL_LOCAL_AUDIT_NOT_REPRODUCIBLE_FROM_RELEASE_COMMIT",
+  "measured_at": "2026-08-19",
+  "data_policy": "synthetic_public_only",
+  "clinical_validation": false,
+  "source_reports": [
+    {
+      "path": "docs/PHASE_2_LOCAL_INFERENCE.md",
+      "sha256": "1d122e57a7e605153f19e62df3bba1f88bfbb8c552a7ea162bc1b8df683d19e4"
+    },
+    {
+      "path": "docs/PHASE_2B_SAFETY_INTENT.md",
+      "sha256": "3f1e198f861ab0be094fe0b901f14789e773341c736b02c1d9a15f8912e6fd42"
+    }
+  ],
+  "release_provider_source": {
+    "path": "src/inference/providers.py",
+    "sha256_before_release_commit": "2cb6dede8245b616265c57ee75872b5247efc7c62e97ed70c08a07699c5e6bae"
+  },
+  "recorded_run_provider_sha256": "581ed677f9dc280f6076dacc95a4c06c1470cbc9021bd6a02eb752fb489d2204",
+  "identity": {
+    "base_model": "Qwen/Qwen2.5-7B-Instruct",
+    "base_revision": "a09a35458c702b33eeacc393d103063234e8bc28",
+    "adapter_sha256": "b874d8dbc9885c51577a06ad9738f0a418210fc9acb3f633effae192c3aa54e0",
+    "quantization": "bitsandbytes NF4 4-bit, double quantization, float16 compute",
+    "hardware": "NVIDIA GeForce RTX 5060 Laptop GPU, 8151 MiB reported VRAM"
+  },
+  "dataset_hashes": {
+    "synthetic_v0": "20d99c6c82b7ecc02a81c1bd4902bbe8aacae63b73772d54a80daa0f9e4bf6be",
+    "medication_contrast_v0": "22e7979d2d4bcdf3742953fe1e0f6b9395f0506ead729e78a30c887ccea4924c",
+    "safety_onset_edge_v1_1": "eb9bb5a0681c60885a91377a018bec327533b549195af68f8f7c3462563d0c9f"
+  },
+  "fixed_slice_results": [
+    {
+      "slice": "synthetic_v0",
+      "n": 10,
+      "base_nf4_extraction_f1": 0.697,
+      "adapter_nf4_extraction_f1": 0.687,
+      "adapter_minus_base": -0.01,
+      "adapter_false_refusal_rate": 0.1429
+    },
+    {
+      "slice": "medication_contrast_v0",
+      "n": 4,
+      "base_nf4_extraction_f1": 0.8966,
+      "adapter_nf4_extraction_f1": 0.8966,
+      "adapter_minus_base": 0.0,
+      "adapter_false_refusal_rate": 1.0
+    },
+    {
+      "slice": "safety_onset_edge_v1_1",
+      "n": 6,
+      "base_nf4_extraction_f1": 0.75,
+      "adapter_nf4_extraction_f1": 0.75,
+      "adapter_minus_base": 0.0,
+      "adapter_false_refusal_rate": 0.25
+    }
+  ],
+  "latency": {
+    "base_nf4": {
+      "cold_load_seconds": 31.226,
+      "warm_p50_seconds": 12.333,
+      "warm_p95_seconds": 15.98,
+      "warm_mean_seconds": 12.215,
+      "peak_cuda_allocated_bytes": 5850974720
+    },
+    "adapter_nf4": {
+      "cold_load_seconds": 30.753,
+      "warm_p50_seconds": 19.933,
+      "warm_p95_seconds": 30.63,
+      "warm_mean_seconds": 20.547,
+      "peak_cuda_allocated_bytes": 5931715072
+    }
+  },
+  "adapter_effect_probe": {
+    "max_absolute_logit_delta": 0.6396484375,
+    "mean_absolute_logit_delta": 0.1628172696,
+    "l2_delta": 72.6388092041,
+    "interpretation": "establishes LoRA participation, not output-quality improvement"
+  },
+  "engineering_integration": {
+    "provider_api_browser_sqlite": "PASS_HISTORICAL_LOCAL_AUDIT",
+    "simulated_offline_non_loopback_socket_guard": "PASS_HISTORICAL_LOCAL_AUDIT",
+    "browser_e2e": "2_OF_2_PASS_HISTORICAL_LOCAL_AUDIT",
+    "process_restart_provenance": "PASS_HISTORICAL_LOCAL_AUDIT"
+  },
+  "decision": {
+    "product_default": "mock-rules-v2",
+    "adapter_deployment": "BLOCKED",
+    "reasons": [
+      "same-local unquantized comparator did not fit the available GPU and the quantization gate was not evaluable",
+      "false-refusal regressions on frozen synthetic slices",
+      "the recorded provider hash differs from the release provider source hash"
+    ]
+  },
+  "limitations": [
+    "The original per-row predictions, raw outputs, model weights and local runtime are intentionally not committed.",
+    "The recorded run predated the release commit and used a different provider source hash.",
+    "The evidence supports a historical integration and rejection decision, not a clean-clone model reproduction, LoRA superiority, clinical safety or deployment readiness.",
+    "Offline behavior was simulated with local-only flags and a process socket guard; physical network disconnection was not tested."
+  ]
+}

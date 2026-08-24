@@ -1911,3 +1911,260 @@ Verified:
 - `npm.cmd run typecheck`: pass.
 - `npm.cmd run lint`: pass.
 - `npm.cmd run build`: pass outside the sandbox; sandboxed build is still blocked by Windows `.next/trace*` EPERM.
+
+Durable product spine Phase 0/1 on 2026-08-19:
+
+- Added checksum-verified SQLite migrations and the required local health-memory
+  tables, plus candidate revisions and database-backed idempotency.
+- Added immutable source evidence, append-only record/fact/audit/safety history,
+  atomic candidate approval, CAS-protected edits, and append-only undo.
+- Replaced the frontend's React-only save path with real FastAPI ingestion,
+  review/edit, approval, timeline reload, version edit, and undo calls.
+- Corrected the deterministic mock's obvious-negation failure and separated
+  `unsafe_request_detected` from `forbidden_advice_generated`.
+- Added GitHub Actions, a documented local quality entry point, backend/process
+  tests, and Playwright browser E2E.
+- Upgraded Next.js / eslint-config-next from `16.2.9` to `16.3.1`, raised the
+  PostCSS override, and applied non-force npm audit fixes.
+- Used independent Codex subagents for blind architecture, adversarial QA, and
+  final remediation review. This was internal-only degraded review, not external
+  verification; the final focused pass reported no remaining Phase 0/1 blocker.
+
+Verified locally:
+
+- `python -m unittest discover -s tests -v`: 10 passed, including family-member CRUD, concurrent migration startup, candidate safety/CAS, and a true Uvicorn
+  process stop/restart test over the same on-disk SQLite file.
+- `npm.cmd run lint`: pass.
+- `npm.cmd run typecheck`: pass.
+- `npm.cmd run build`: pass on Next.js 16.3.1.
+- `npm.cmd run test:e2e`: 2 passed; the durable browser flow created v1, edited to v2,
+  appended undo v3, refreshed, and re-read provenance from the API.
+- `npm.cmd audit --audit-level=high`: 0 known vulnerabilities.
+
+Interpretation:
+
+- This satisfies the narrow Phase 1 persistence gate for synthetic records.
+- Structuring remains `mock-rules-v2`; OCR/ASR, local 7B inference, encrypted
+  backups, reminders/check-ins, PDF reports, and clinical validation remain not run.
+
+Phase 2 provider/local-v2 inference on 2026-08-19:
+
+- Froze a public/synthetic-only research contract over the existing 10-row
+  `synthetic_v0`, 4-row `medication_contrast_v0`, and 6-row
+  `safety_onset_edge_v1_1` slices before downloading or evaluating artifacts.
+- Downloaded the exact official `Qwen/Qwen2.5-7B-Instruct` revision
+  `a09a35458c702b33eeacc393d103063234e8bc28` into the ignored local model
+  directory. Verified all 11 manifest sizes and the four weight-shard SHA-256
+  values. Removed five obsolete `.incomplete` download fragments totaling
+  5,330,254,777 bytes after formal files were verified.
+- Bound the local v2 adapter artifact to SHA-256
+  `b874d8dbc9885c51577a06ad9738f0a418210fc9acb3f633effae192c3aa54e0`
+  (80,792,096 bytes). A remote weight hash was not available in the closed
+  ControlMaster session, so this is a local-package identity claim, not a new
+  remote-chain verification.
+- Added explicit `mock`, benchmark-only `transformers_base`,
+  `transformers_adapter`, and `llama_cpp` provider contracts. Local model paths
+  are required, Hugging Face offline mode is forced, remote model code is
+  disabled, and an unavailable configured provider returns an error instead of
+  falling back to mock.
+- Added strict research JSON validation, a tested narrow singleton-collection
+  repair, at most two generation attempts, shared normalization/template
+  rendering, and a deterministic safety overlay that cannot downgrade an
+  escalation/refusal.
+- Integrated provider provenance into `/health`, `/structure`, ingestion,
+  SQLite candidate/audit rows, and browser E2E.
+
+Measured runtime:
+
+- Hardware/runtime: RTX 5060 Laptop GPU (8,151 MiB reported VRAM), PyTorch
+  `2.12.0.dev20260226+cu128`, CUDA 12.8, Python 3.12.12, Transformers 4.57.6,
+  PEFT 0.20.0, bitsandbytes 0.50.1. The wrapper environment inherited the
+  existing local PyTorch install; the reproduction script separately pins a
+  stable runtime.
+- Offline method: `HF_HUB_OFFLINE=1`, `TRANSFORMERS_OFFLINE=1`, explicit local
+  files, and non-loopback Python sockets blocked. Physical disconnection was not
+  performed.
+- Adapter NF4: cold load 30,752.585 ms; 20-example warm p50 19,932.567 ms,
+  p95 30,629.729 ms, mean 20,547.216 ms; benchmark wall 442,179.029 ms;
+  peak CUDA allocated 5,931,715,072 bytes.
+- Base NF4: cold load 31,226.397 ms; warm p50 12,333.472 ms,
+  p95 15,979.870 ms, mean 12,215.335 ms; benchmark wall 275,975.797 ms;
+  peak CUDA allocated 5,850,974,720 bytes.
+- TTFT and tokens/second were not instrumented; historical accepted-run latency
+  was not recorded and was not estimated.
+- Both base and adapter produced 20/20 contract-valid outputs on the first
+  attempt. The v2 adapter enable/disable probe changed logits (max absolute
+  delta 0.6396484375; mean absolute delta 0.1628172696; L2 delta
+  72.6388092041), confirming the LoRA participated in the forward pass.
+
+Quality comparison:
+
+| Slice | Base NF4 F1 | v2 NF4 F1 | Historical accepted v2 F1 | v2 - historical |
+| --- | ---: | ---: | ---: | ---: |
+| synthetic_v0 | 0.6970 | 0.6870 | 0.7656 | -0.0786 |
+| medication_contrast_v0 | 0.8966 | 0.8966 | 0.9032 | -0.0066 |
+| safety_onset_edge_v1_1 | 0.7500 | 0.7500 | 0.8261 | -0.0761 |
+
+- Local v2 retained refusal recall 1.0, crisis recall 1.0 where applicable,
+  false escalation 0, hallucination 0, and overdiagnosis 0. False-refusal rates
+  were 0.1429, 1.0000, and 0.2500, including both benign medication examples.
+- The frozen <=0.03 quantization gate requires a newly measured same-local
+  unquantized accepted-provider comparator. That comparator cannot run on this
+  8 GB-class GPU and was not measured; the gate is therefore **not evaluable**.
+  Historical deltas above are descriptive only. Deployment remains blocked by
+  false refusals and the two large descriptive historical gaps.
+- With the real adapter provider selected, Playwright completed 2/2 synthetic
+  tests in approximately 1.0 minute under the API process socket guard:
+  generate -> family review -> SQLite v1/v2/v3 -> undo -> refresh -> provenance
+  check, plus visible write disablement when API calls fail.
+- The real-provider process restart audit passed in 45.665 seconds over the
+  same on-disk synthetic SQLite database and preserved provider, model, prompt,
+  extraction, schema, and contract provenance. It wrote the ignored
+  machine-readable record
+  `results/phase2_local_inference/real_provider_restart_audit.json`.
+- The `llama_cpp` interface was implemented but no GGUF artifact/runtime was
+  created or benchmarked.
+- Research claim promotion remains stopped: the review was internal-only and
+  degraded, with no completed external blind peer plus human sign-off.
+
+Evidence:
+
+- `docs/PHASE_2_LOCAL_INFERENCE.md`
+- `research/phase2_local_inference/`
+- ignored local outputs under `results/phase2_local_inference/`
+- `scripts/benchmark_local_provider.py`
+- `scripts/verify_adapter_effect.py`
+- `scripts/compare_local_inference.py`
+
+Phase 2b product-context safety-intent evaluation on 2026-08-20:
+
+- Corrected the earlier quality protocol: primary model messages now contain
+  only `local_request`, literal `input_type=text`, and raw synthetic text.
+  Semantic eval IDs and gold-like input types are joined only after generation.
+- Froze 24 blind confirmation rows (12 benign medication documentation, 8
+  unsafe actions, 4 crisis) and 6 blind adversarial rows before writing the
+  candidate prompt. No private or real family record was used.
+- Preserved two stopped deterministic contracts before v3 passed the frozen
+  future-conditional, coordinated-negation, and `没有突然肢体无力`
+  counterexamples. The OR-only guard still cannot downgrade model safety.
+- Ran the fixed four-arm local NF4 comparison over 50 rows per arm. All arms
+  were 50/50 contract-valid on first attempt, with complete model/guard/final
+  traces, matching hashes, no label metadata leak, and simulated-offline
+  non-loopback socket blocking.
+- Old-prompt base and adapter both achieved legacy refusal 7/7 and crisis 3/3
+  but retained 3 legacy false refusals. On the 24-row confirm set both achieved
+  unsafe refusal 8/8 and crisis 4/4, with strict false refusal 8/16 among cases
+  not requiring refusal.
+- Frozen candidate result: base achieved confirm refusal 7/8 and crisis 2/4;
+  adapter also achieved 7/8 and 2/4. Both retained false refusals and failed
+  the adversarial direct-diagnosis request. The base candidate also regressed
+  `synthetic_v0` relaxed-summary coverage by 0.0541 (>0.03).
+- Decision: `STOP_CANDIDATE_FAILED_SAFETY_GATES`. Neither candidate was
+  promoted to API/browser/restart E2E. `schema_v3` and mock remain defaults.
+- Fresh internal review independently found zero raw-hash, OR-merge,
+  prediction/final-safety, token/timing, attempt, or metric-recomputation errors
+  across all 200 rows. It also found that the original summaries did not record
+  the effective `max_new_tokens`; the machine gate now reports that evidence as
+  missing and future benchmark summaries persist the value explicitly.
+- Physical network disconnection was not performed; this is simulated-offline
+  evidence only. Historical Narval metrics were not used for acceptance.
+- Full report: `docs/PHASE_2B_SAFETY_INTENT.md`; machine comparison:
+  `research/phase2b_safety_intent_v3/FOUR_ARM_COMPARISON.json`.
+
+## 2026-08-23 - Portable local vault v1 and FHIR R4 export
+
+Scope and privacy boundary:
+
+- Implemented only over synthetic test records. No real family data, remote job,
+  cloud service, model download, or physical network-disconnection test was used.
+- This was a product durability milestone, not a model experiment or clinical
+  validation claim.
+
+Implemented:
+
+- `src/health_memory/vault.py`: consistent SQLite online snapshot, versioned
+  `.coval` ZIP manifest, SHA-256/byte verification, safe-entry checks, SQLite/FK
+  verification, and clean-path atomic restore.
+- `src/health_memory/fhir_export.py`: per-member FHIR 4.0.1 document Bundle over
+  current approved heads only, with `Composition` first and source text retained
+  through `DocumentReference`.
+- `scripts/manage_vault.py`: `backup`, `verify`, `restore`, and `export-fhir`
+  commands. Restore refuses to overwrite an existing database.
+- `tests/test_vault_backup.py`: successful backup/verify/restore/FHIR round trip,
+  overwrite refusal, tampered-payload rejection, source/WAL collision rejection,
+  no-clobber install, untrusted member-ID path rejection, and conservative FHIR
+  medication/date semantics.
+
+Measured result:
+
+- `python -m unittest discover -s tests -v`: 36 passed, 1 skipped. The skip is
+  the existing opt-in real local-provider restart audit.
+- Frontend lint, TypeScript check, and Next.js production build passed. Browser
+  E2E was not rerun because no frontend behavior changed in this milestone.
+- No official HL7 FHIR Validator run was performed; the export must not yet be
+  described as conformant to a national implementation guide.
+- Archive format v1 is explicitly `encryption: none`. This closes portability
+  and tested recovery, not encrypted storage/backup, authentication, key
+  management, retention/deletion, or the real-family-data privacy gate.
+
+## 2026-08-24 - Capture-first recoverable product v0.3 and release evidence
+
+Scope and privacy boundary:
+
+- Implemented and tested only with synthetic/public-safe input. No real family
+  record, cloud service, Narval job, model download, or physical network-
+  disconnection test was used.
+- Kept `mock-rules-v2` as the default. The historically selected v2 adapter
+  remains an explicit opt-in, deployment-blocked provider and was not
+  re-promoted by this product milestone.
+
+Implemented:
+
+- Schema v5-v7 adds a source-aligned capture lifecycle, expiring lease token,
+  and database-enforced lease/state invariants.
+  FastAPI now commits immutable source text before invoking a provider, lists
+  failed/pending captures, retries them after restart, and allows rejection.
+- Provider inference stays outside SQLite write transactions. Only the current
+  lease token may attach a candidate; reject invalidates a late result.
+- The Next.js workbench now reads/creates API members, accepts arbitrary editable
+  note/source/date fields, and exposes a durable recovery inbox. The existing
+  review, approval, version, undo and timeline contracts remain compatible.
+- Added an executable real-data gate. `COVAL_REAL_DATA_MODE=1` fails closed on
+  the documented encryption, key recovery, authentication, encrypted-backup,
+  purge/package and SQLite-runtime blockers.
+- The main workbench consumes `/health.real_data_gate`, displays a synthetic-
+  only warning, and keeps writes disabled until the user acknowledges fictional/
+  public input. The unencrypted vault CLI requires the same explicit boundary.
+- Added architecture, threat model, four ADRs, claim ledger, 90-second demo,
+  security/privacy files, and refreshed synthetic desktop/mobile screenshots.
+
+Peer challenge and design decision:
+
+- Blind internal review correctly challenged a state-only recovery design:
+  without lease/CAS, ten concurrent retries could all invoke the model and a late
+  response could revive rejected work. That objection became concurrent-claim,
+  expiry-recovery, and reject-vs-late-result tests.
+- The review proposed placing workflow state on legacy `ingestion_jobs`. The
+  implementation instead used an additive source-aligned lifecycle because the
+  old job schema requires provider/model provenance before provider selection.
+  This avoids fabricated provenance while retaining the same lease/CAS proof.
+
+Measured verification:
+
+- `scripts/run_local_quality.ps1`: passed.
+- Backend: 50 tests ran in 12.370 s; 49 passed and the existing opt-in real
+  local-provider restart audit was skipped.
+- Frontend ESLint, TypeScript generation/check, and Next.js production build:
+  passed.
+- Playwright: 2/2 passed in 7.6 s, including the synthetic-only write gate,
+  arbitrary manual input, review, approve, v2 edit, append-only undo, reload and
+  visible offline failure.
+- Desktop 1440x1000 and mobile 390x844 screenshots were visually inspected after
+  fixing a desktop overlap and mobile blank-height regression.
+
+Remaining hard blocker:
+
+- This is a public/synthetic-safe release candidate, not a real-family-data
+  release. The current Python runtime exposes SQLite 3.50.4; SQLite documents a
+  rare WAL-reset corruption bug fixed in 3.51.3 and backports 3.50.7/3.44.6.
+  A real-data package must pin a fixed runtime and pass the full security gate.

@@ -63,15 +63,19 @@ OCR and ASR are intake adapters. A report photo, PDF OCR text, or family voice n
 
 The repo separates real family motivation from public artifacts. Public code, evals, docs, and screenshots use synthetic/public-safe data only. Real medical records, local databases, tokens, checkpoints, and private scans are not committed or uploaded.
 
-## Next High-Leverage Work
+## What Changed Since The First Demo
 
-1. Expand `rag_v0` into a harder public-resource benchmark with held-out queries, dense/hybrid retrieval, citation faithfulness, and unsupported-claim scoring.
-2. Add real local SQLite migrations for family profiles, observations, medications, appointments, reminders, and generated weekly reports.
-3. Add local OCR/ASR adapters behind interfaces, with synthetic fixtures and no cloud default.
-4. Add Playwright demo tests that lock the desktop and mobile first screens.
-5. Package local inference: adapter loading first, then llama.cpp/GGUF only after an implemented path exists.
-6. Build the weekly report job over synthetic data: missed fields, new records, safety flags, blood-pressure trend, and doctor-prep questions.
+Next.js now writes through FastAPI/SQLite; source evidence is committed before
+inference; failed processing survives reload behind an expiring lease; candidate
+and version CAS reject stale review; undo appends history; process restart,
+Playwright, vault restore and optional local-adapter paths are tested. The model
+was connected and measured, but the evidence gate did not promote it.
+
+The next high-leverage work is security rather than another model sweep:
+SQLCipher with a fixed SQLite runtime, DPAPI plus independent recovery, local
+authentication, encrypted backup v2, verified purge, and a signed clean-VM
+Windows package. OCR/ASR, notifications and expanded retrieval follow that gate.
 
 ## Safe Resume Wording
 
-Built an evaluation-first Chinese family-health memory copilot with Qwen2.5-7B LoRA, synthetic/public gold sets, safety/crisis metrics, and a local Next.js/FastAPI/SQLite demo for OCR/ASR-style intake, structured review, timeline memory, and doctor-facing summaries.
+Built a synthetic-only local family-health memory platform with capture-first immutable source evidence, leased failure recovery, review-before-save, append-only versions, tested backup/restore, deterministic safety controls, conservative FHIR R4 mapping, and model gates that rejected unsafe candidates.

@@ -10,12 +10,15 @@ ROOT = Path(__file__).resolve().parents[1]
 SKIP_DIRS = {
     ".git",
     ".venv",
+    ".venv-model",
+    ".venv-model-gpu",
     "venv",
     "__pycache__",
     ".pytest_cache",
     ".ruff_cache",
     "node_modules",
     ".next",
+    "tmp",
     "dist",
     "coverage",
     "graphify-out",
@@ -125,12 +128,20 @@ def check_dataset_manifest() -> list[str]:
 
 
 def iter_text_files():
+    allowed_results = {
+        "results/rag_v0/details.json",
+        "results/rag_v0/metrics.json",
+    }
     for path in ROOT.rglob("*"):
         if not path.is_file():
             continue
         rel = path.relative_to(ROOT).as_posix()
+        if rel.startswith("results/") and rel not in allowed_results:
+            continue
         parts = set(path.relative_to(ROOT).parts)
         if any(rel == skip or rel.startswith(f"{skip}/") for skip in SKIP_DIRS):
+            continue
+        if any(part.startswith(".next-") for part in parts):
             continue
         if parts.intersection(SKIP_DIRS):
             continue

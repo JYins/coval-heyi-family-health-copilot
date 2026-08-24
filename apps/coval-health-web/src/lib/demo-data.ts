@@ -38,6 +38,8 @@ export type TimelineItem = {
   detail: string;
   tag: string;
   safety: SafetyState;
+  currentVersionId?: string;
+  versionNumber?: number;
 };
 
 export type EvalEvidenceItem = {
@@ -71,6 +73,7 @@ export const memorySteps: MemoStep[] = [
 ];
 
 export const modeHints: Record<string, string> = {
+  "手动记录": "仅输入虚构或公开样例；原文会先保存，再调用本地整理模型。",
   "OCR 文本": "体检报告、化验单、药盒照片或 PDF 先转成可复核文本。",
   "语音转写": "家人临时描述症状，先转写，再核对时间、否定词和药名。",
   "记录血压": "记录收缩压、舒张压、心率、测量时间、服药时间和症状。"

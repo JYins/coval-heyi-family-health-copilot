@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+"""
+Legacy v0.1 demo implementation retained temporarily for file-history context.
+The executable compatibility entrypoint is below this string and delegates to
+``memory_api.create_app``. No legacy routes or in-memory save behavior execute.
+
 import json
 from enum import Enum
 from pathlib import Path
@@ -355,3 +360,13 @@ def _format_percent(value: float | None) -> str:
     if value is None:
         return "not run"
     return f"{value * 100:.0f}%"
+
+
+"""
+
+# Compatibility entrypoint: the durable API lives in memory_api.py. Keeping this
+# module path avoids breaking existing uvicorn commands while the legacy demo
+# definitions above remain available for historical comparison.
+from .memory_api import create_app, default_database_path  # noqa: E402
+
+app = create_app()

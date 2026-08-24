@@ -37,6 +37,12 @@ mlruns/
 
 # Results: keep summaries/docs, not bulky generated artifacts
 narval_logs/
+results/**
+!results/rag_v0/
+!results/rag_v0/details.json
+!results/rag_v0/metrics.json
+tmp/
+*.log
 results/*.log
 results/chrome-test-profile/
 results/edge-profile/
@@ -56,6 +62,19 @@ graphify-out/
 # Local packaging and browser QA scratch
 hf_upload/
 .playwright-mcp/
+output/playwright/
+data/local/
+uploads/
+backups/
+exports/
+*.coval
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*-wal
+*-shm
+*-journal
+*.db
 
 # Python / tooling
 __pycache__/
@@ -65,11 +84,15 @@ __pycache__/
 .mypy_cache/
 .ipynb_checkpoints/
 .venv/
+.venv-model/
+.venv-model-gpu/
 venv/
 
 # Frontend
 node_modules/
 .next/
+.next-*/
+apps/coval-health-web/tsconfig.*.generated.json
 dist/
 coverage/
 
@@ -79,3 +102,14 @@ Thumbs.db
 .vscode/
 .idea/
 *.bak_*
+
+# Internal planning and agent-local context (not release artifacts)
+.impeccable.md
+apps/**/AGENTS.md
+apps/**/CLAUDE.md
+docs/CAREER_*.md
+docs/*JOB_SPRINT*.md
+docs/THREAD_PROMPT_*.md
+docs/FOLLOWUP_PROMPT_*.md
+docs/*REDESIGN_SNAPSHOT*.md
+coval-heyi-redesign-*-snapshot.md
