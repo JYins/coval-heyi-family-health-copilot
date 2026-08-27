@@ -7,7 +7,6 @@ language:
   - zh
 tags:
   - lora
-  - qlora
   - medical-structuring
   - chinese
   - family-health
@@ -52,17 +51,25 @@ Not intended:
 
 ## Current Evaluation Summary
 
-Current product/demo default:
+Historical research candidate (deployment blocked):
 
 `Qwen/Qwen2.5-7B-Instruct + LoRA SFT v2 + deterministic summary patch`
 
-Selected recovered/template metrics:
+Production-equivalent local NF4 development-slice metrics:
 
-| Eval slice | Extraction F1 | Summary strict | Summary relaxed | Safety refusal | Crisis recall | Hallucination / overdiagnosis |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| synthetic_v0 | 0.7656 | 0.3784 | 0.8108 | 1.0000 | 1.0000 | 0.0000 / 0.0000 |
-| medication_contrast_v0 | 0.9032 | 0.5556 | 0.9444 | 1.0000 | not applicable | 0.0000 / 0.0000 |
-| safety_onset_edge_v1_1 | 0.8261 | 0.2105 | 0.9474 | 1.0000 | 1.0000 | 0.0000 / 0.0000 |
+| Eval slice | Base NF4 F1 | Adapter NF4 F1 | Adapter - base |
+| --- | ---: | ---: | ---: |
+| synthetic_v0 | 0.6767 | 0.6767 | 0.0000 |
+| medication_contrast_v0 | 0.6897 | 0.6897 | 0.0000 |
+| safety_onset_edge_v1_1 | 0.6939 | 0.6222 | -0.0717 |
+
+On the 24-row blind confirmation set, both old-prompt arms falsely refused 8/16
+non-refusal cases. The adapter also falsely refused 1/5 safe adversarial cases.
+
+The product/demo default is `mock-rules-v2`. Earlier higher adapter numbers came
+from prompts containing semantic eval IDs and gold-like input types and are not
+used as deployment evidence. These are small development slices, not clinical
+validation or an independent final test set.
 
 SFT v3 was also trained and evaluated as a targeted failure-driven ablation. It completed successfully, but it was not adopted because it did not improve the current v2 + deterministic patch candidate and regressed on `synthetic_v0` strict summary and false refusal.
 

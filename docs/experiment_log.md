@@ -2168,3 +2168,59 @@ Remaining hard blocker:
   release. The current Python runtime exposes SQLite 3.50.4; SQLite documents a
   rare WAL-reset corruption bug fixed in 3.51.3 and backports 3.50.7/3.44.6.
   A real-data package must pin a fixed runtime and pass the full security gate.
+
+## 2026-08-28 - Final portfolio truthfulness and provenance hardening
+
+Scope and boundary:
+
+- Synthetic/public-safe only. No real family data, Narval work, model download,
+  physical disconnection test, or real local-provider rerun was performed.
+- The historical LoRA v2 candidate remains deployment-blocked and
+  `mock-rules-v2` remains the product default.
+
+Changes driven by three independent audits:
+
+- Replaced the clean-clone `/model-evidence` fallback on ignored `results/`
+  directories with committed, curated Phase 2/2b evidence. The UI now calls v2
+  a historical research candidate, shows `BLOCKED`, and uses Phase 2b product-
+  context old-prompt base-to-adapter F1 pairs (`0.6767→0.6767 / 0.6897→0.6897 /
+  0.6939→0.6222`). Both arms had 50% false refusal on the 24-row blind
+  confirmation set; the adapter also falsely refused 1/5 safe adversarial cases.
+  Phase 2 contaminated values remain labeled legacy.
+- Split historical-run hashes from current-release hashes in the public evidence
+  summaries and added a byte-for-byte integrity regression test.
+- Promoted the synthetic/public-safe Phase 2b aggregate comparison, manifest,
+  research contract, claim ledger, data invariants, and deterministic baseline
+  into committed public receipts; raw generations and per-row traces remain local.
+- Added SQLite migration v8. Same member/kind/date/content remains deduplicated
+  only within the same declared source label; distinct sources now retain
+  distinct immutable evidence and records.
+- Stopped assigning accepted-v2/Qwen identity to arbitrary local paths. Until a
+  pinned full-file identity manifest exists, runtime model/adapter provenance is
+  explicitly `identity unverified` and persisted under a generic extraction
+  version. Historical accepted-v2 identity remains a curated research receipt.
+- Removed the 360-line inert legacy API string, fixed review rows so an empty
+  current candidate cannot display lab facts from a static sample, and scoped
+  review checkmarks to the active candidate revision.
+- Replaced desktop/mobile README screenshots with visually inspected synthetic
+  review states that show actual structured facts, doctor summary, SQLite v8,
+  mock runtime, and the blocked research candidate.
+
+Measured verification:
+
+- `scripts/run_local_quality.ps1`: pass.
+- Backend: 57 tests ran in 15.253 s; 56 passed and the opt-in real local-provider
+  restart audit was skipped.
+- Frontend ESLint, TypeScript generation/check, and Next.js production build:
+  pass.
+- Playwright: 2/2 pass in 7.7 s.
+- `python -m pip check`: no broken requirements.
+- `npm audit --audit-level=high`: 0 vulnerabilities.
+
+Release interpretation:
+
+- Synthetic portfolio/product demo: GO after remote CI confirms this change.
+- Real-family-data use: NO-GO until the executable threat-model gates pass.
+- Model claim: the work demonstrates LoRA integration, leakage correction,
+  evaluation and rejection discipline; it does not demonstrate LoRA superiority
+  or clinical validity.

@@ -107,8 +107,11 @@ product-integration gate.
 
 Primary evidence:
 
-- `research/phase2b_safety_intent_v3/FOUR_ARM_COMPARISON.json`
-- `research/phase2b_safety_intent_v3/EXPERIMENT_MANIFEST.json`
+- `artifacts/public/phase2b_safety_intent/receipts/FOUR_ARM_COMPARISON.json`
+- `artifacts/public/phase2b_safety_intent/receipts/EXPERIMENT_MANIFEST.json`
+- `artifacts/public/phase2b_safety_intent/receipts/RESEARCH_CONTRACT.md`
+- `artifacts/public/phase2b_safety_intent/receipts/CLAIM_LEDGER.csv`
+- `artifacts/public/phase2b_safety_intent/receipts/DATA_INVARIANTS.json`
 - ignored raw outputs and traces under
   `results/phase2b_safety_intent_v3/`
 - `scripts/benchmark_local_provider.py`
