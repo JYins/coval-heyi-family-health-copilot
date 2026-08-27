@@ -110,10 +110,10 @@ class ProcessRestartTest(unittest.TestCase):
                 restored = _request_json(port, "GET", f"/records/{record['id']}?member_id=mom")
                 extraction = restored["extraction"]
                 self.assertEqual("transformers_adapter", extraction["provider"])
-                self.assertIn("Qwen/Qwen2.5-7B-Instruct", extraction["model_ref"])
-                self.assertIn("LoRA SFT v2", extraction["model_ref"])
+                self.assertIn("identity unverified", extraction["model_ref"])
+                self.assertNotIn("SFT v2", extraction["model_ref"])
                 self.assertIn("bnb-4bit-nf4", extraction["model_ref"])
-                self.assertEqual("sft-v2-schema-v3-template-v1", extraction["extraction_version"])
+                self.assertEqual("local-adapter-schema-v3-template-v1", extraction["extraction_version"])
                 self.assertEqual("schema_v3", extraction["prompt_version"])
                 self.assertEqual("health-memory-v1", extraction["schema_version"])
 

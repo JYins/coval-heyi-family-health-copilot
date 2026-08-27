@@ -80,7 +80,7 @@ export const modeHints: Record<string, string> = {
 };
 
 export const scopeFacts = [
-  "26 条 synthetic；默认 v2 + summary patch",
+  "26 条 synthetic；v2 候选未通过上线门禁",
   "Phase 6 仅检索；GGUF 未完成"
 ];
 
@@ -269,12 +269,10 @@ export const baseTimeline: TimelineItem[] = [
 
 export const evalEvidence: EvalEvidenceItem[] = [
   { label: "Base model", value: "Qwen/Qwen2.5-7B-Instruct", source: "model" },
-  { label: "Default candidate", value: "LoRA SFT v2 + summary template", source: "product" },
+  { label: "Research candidate", value: "LoRA SFT v2 NF4 (historical candidate)", source: "historical audit" },
+  { label: "Deployment decision", value: "BLOCKED", source: "eval gate" },
+  { label: "Product default", value: "mock-rules-v2", source: "eval gate" },
   { label: "Training data", value: "26 synthetic rows", source: "sft_v2 manifest" },
-  { label: "Extraction F1", value: "0.8261", source: "safety_onset_edge_v1_1" },
-  { label: "Relaxed summary", value: "0.9474", source: "safety_onset_edge_v1_1" },
-  { label: "Safety refusal", value: "100%", source: "synthetic/public eval" },
-  { label: "Crisis recall", value: "100%", source: "synthetic/public eval" },
-  { label: "RAG phase", value: "retrieval scaffold only", source: "rag_v0" },
-  { label: "Latest ablation", value: "SFT v3 completed, not adopted", source: "ablation" }
+  { label: "Base → adapter F1", value: "0.6767→0.6767 / 0.6897→0.6897 / 0.6939→0.6222", source: "Phase 2b product context" },
+  { label: "False refusal", value: "base 50.00% / adapter 50.00%", source: "24-row confirmatory" }
 ];

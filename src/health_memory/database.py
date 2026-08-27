@@ -46,7 +46,11 @@ def apply_migrations(database_path: Path) -> int:
 
 def _apply_one(database_path: Path, version: int, name: str, checksum: str, sql: str) -> None:
     connection = connect(database_path)
+    requires_foreign_keys_off = "-- coval: foreign_keys_off" in sql
     try:
+        if requires_foreign_keys_off:
+            connection.execute("PRAGMA foreign_keys = OFF")
+            connection.execute("PRAGMA legacy_alter_table = ON")
         connection.execute("BEGIN IMMEDIATE")
         row = connection.execute(
             "SELECT name, checksum FROM schema_migrations WHERE version = ?", (version,)
@@ -60,6 +64,12 @@ def _apply_one(database_path: Path, version: int, name: str, checksum: str, sql:
             return
 
         _execute_statements(connection, sql)
+        if requires_foreign_keys_off:
+            foreign_key_rows = connection.execute("PRAGMA foreign_key_check").fetchall()
+            if foreign_key_rows:
+                raise RuntimeError(
+                    f"Migration {version} created {len(foreign_key_rows)} foreign-key errors"
+                )
         connection.execute(
             """
             INSERT INTO schema_migrations(version, name, checksum, applied_at)
@@ -72,6 +82,9 @@ def _apply_one(database_path: Path, version: int, name: str, checksum: str, sql:
         connection.rollback()
         raise
     finally:
+        if requires_foreign_keys_off:
+            connection.execute("PRAGMA legacy_alter_table = OFF")
+            connection.execute("PRAGMA foreign_keys = ON")
         connection.close()
 
 

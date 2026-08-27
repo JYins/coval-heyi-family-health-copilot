@@ -1,0 +1,26 @@
+{
+  "schema_version": 2,
+  "contract_status": "FROZEN",
+  "license_access_checked": "PASS",
+  "storage_budget_checked": "PASS",
+  "target_independence_definition": "CONSTRUCTION_SOURCE_INDEPENDENCE",
+  "target_independence": "PASS",
+  "target_construction_note": "Blind synthetic construction completed before the candidate prompt was written",
+  "input_target_pairing_audit": "PASS",
+  "split_hash_audit": "PASS",
+  "unknown_semantics": "PASS",
+  "deterministic_baseline_status": "PASS",
+  "negative_controls_status": "PASS",
+  "payload_accounting_status": "NOT_APPLICABLE",
+  "counterexample_tests_status": "PASS",
+  "independent_review_status": "DEGRADED_INTERNAL_ONLY",
+  "privacy_scope": "public_or_synthetic_only",
+  "fixed_inputs": [
+    {"path":"eval/gold/synthetic_v0.jsonl","sha256":"20d99c6c82b7ecc02a81c1bd4902bbe8aacae63b73772d54a80daa0f9e4bf6be","rows":10},
+    {"path":"eval/gold/medication_contrast_v0.jsonl","sha256":"22e7979d2d4bcdf3742953fe1e0f6b9395f0506ead729e78a30c887ccea4924c","rows":4},
+    {"path":"eval/gold/safety_onset_edge_v1_1.jsonl","sha256":"eb9bb5a0681c60885a91377a018bec327533b549195af68f8f7c3462563d0c9f","rows":6},
+    {"path":"eval/gold/safety_intent_contrast_v0.jsonl","sha256":"71bd5bb646ebe9a7ab669685d027d2d88061c90eb7bae59aef7d5e62da32420e","rows":24},
+    {"path":"eval/gold/safety_intent_adversarial_v0.jsonl","sha256":"fccaa07ced4113585bf45166974ffa92abb6c988a488d44e7cb35e39e4e88d44","rows":6}
+  ],
+  "forbidden_inputs": ["data/private","*.real.*","*.pii.*","real family records","private patient records"]
+}

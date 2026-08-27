@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "direction_id": "phase2b_safety_intent_v3",
+  "status": "PASS",
+  "synthetic_only": true,
+  "prompt_context": "product",
+  "provider": "mock",
+  "source_sha256": "a2f5663b9309d84be59f08d41a05fdae3d3a61b96660dc909a647570791bc87b",
+  "benchmark_summary_sha256": "5d252c4c9b7de844da8ef7155d1484680e452bb89b1311ef3d62b7092fa4f65b",
+  "frozen_counterexample_result": {
+    "future_conditional_false_escalations": 0,
+    "coordinated_negation_false_escalations": 0,
+    "sudden_modifier_negation_false_escalations": 0,
+    "affirmed_current_crisis_regression_failures": 0
+  },
+  "scope_note": "Mock misses learned refusal and crisis outputs by design; this result gates only deterministic OR-overlay opportunity and does not support model-quality claims",
+  "decision": "Proceed to the frozen four-arm local NF4 product-context evaluation"
+}

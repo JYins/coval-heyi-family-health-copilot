@@ -70,11 +70,12 @@ const inputModes = [
 
 const evidenceOrder = [
   "Base model",
-  "Default candidate",
+  "Research candidate",
+  "Deployment decision",
+  "Product default",
   "Training data",
-  "Extraction F1",
-  "Safety refusal",
-  "RAG phase"
+  "Base → adapter F1",
+  "False refusal"
 ];
 
 const apiBase = process.env.NEXT_PUBLIC_COVAL_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -174,7 +175,8 @@ function firstSentence(text: string) {
 }
 
 function compactEvidenceSource(label: string, source?: string) {
-  if (label === "Default candidate") return "v2 default";
+  if (label === "Research candidate") return "historical audit";
+  if (label === "Deployment decision") return "eval gate";
   if (label === "Base model") return "model";
   if (label === "Training data") return "manifest";
   if (label === "RAG phase") return "phase 6";
@@ -232,9 +234,11 @@ function getReviewRows(sample: HealthSample, candidate: CanonicalRecord | null, 
     {
       key: "observations" as const,
       section: "检查",
-      source: observations.length > 0 ? listText(observations) : labText(sample),
-      field: observations.length > 0 ? listText(observations) : labText(sample),
-      status: observations.length > 0 || sample.structured.labs.length > 0 ? "已识别" : "空",
+      source: candidate ? listText(observations) : labText(sample),
+      field: candidate ? listText(observations, "") : labText(sample),
+      status: candidate
+        ? observations.length > 0 ? "已识别" : "空"
+        : sample.structured.labs.length > 0 ? "已识别" : "空",
       editable: false
     },
     {
@@ -292,6 +296,14 @@ export default function Home() {
     memberId: member.id, noteText, inputMode, sourceLabel, eventDate
   });
   const reviewRows = getReviewRows(selected, draftCandidate, noteText);
+  const reviewScope = record
+    ? stableKey("candidate-review", {
+        recordId: record.id,
+        candidateId: record.candidate_id,
+        candidateRevision: record.candidate_revision,
+        draftCandidate
+      })
+    : stableKey("draft-review", { memberId: member.id, noteText, sourceLabel, eventDate });
   const isOrganized = organizedSampleId === currentDraftKey && Boolean(draftCandidate && record);
   const activeSafety = draftCandidate?.safety.state ?? selected.safety;
   const activeMissingFields = draftCandidate?.missing_fields ?? selected.missingFields;
@@ -309,12 +321,12 @@ export default function Home() {
       : "确认过敏史",
     activeMissingFields[0] ? `补充：${activeMissingFields[0]}` : "摘要可用于复诊沟通"
   ];
-  const checkedCount = reviewRows.filter((row) => checkedRows[`${selected.id}:${row.section}`]).length;
+  const checkedCount = reviewRows.filter((row) => checkedRows[`${reviewScope}:${row.section}`]).length;
   const evidenceRows = evidenceOrder
     .map((label) => modelEvidence.find((item) => item.label === label))
     .filter((item): item is EvalEvidenceItem => Boolean(item))
     .filter((item, index, items) => items.findIndex((candidate) => candidate.label === item.label) === index)
-    .slice(0, 6);
+    .slice(0, 7);
   const gateContractValid = service.gateMode === "synthetic_public_only" && service.realDataReady === false;
   const canWrite = service.state === "online" && gateContractValid && syntheticOnlyConfirmed;
 
@@ -377,10 +389,8 @@ export default function Home() {
         })));
         setModelEvidence([
           { label: "Base model", value: data.base_model, source: "model" },
-          { label: "Default candidate", value: data.adapter, source: data.status },
-          { label: "Training data", value: "26 synthetic rows", source: "sft_v2 manifest" },
-          ...data.metrics,
-          { label: "RAG phase", value: "retrieval scaffold only", source: "rag_v0" }
+          { label: "Research candidate", value: data.adapter, source: data.status },
+          ...data.metrics
         ]);
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
@@ -579,7 +589,7 @@ export default function Home() {
   }
 
   function toggleReviewCheck(section: string) {
-    const key = `${selected.id}:${section}`;
+    const key = `${reviewScope}:${section}`;
     setCheckedRows((items) => ({ ...items, [key]: !items[key] }));
   }
 
@@ -920,7 +930,7 @@ export default function Home() {
 
             <div className="record-needline" aria-label="保存前核对">
               <span>保存前核对</span>
-              <strong>{selected.missingFields[0] ?? "暂无待补字段"}</strong>
+              <strong>{activeMissingFields[0] ?? "暂无待补字段"}</strong>
             </div>
 
             <div className="record-actions">
@@ -1004,7 +1014,7 @@ export default function Home() {
                   <span>核对</span>
                 </div>
                 {reviewRows.map((row) => {
-                  const checkedKey = `${selected.id}:${row.section}`;
+                  const checkedKey = `${reviewScope}:${row.section}`;
                   const isChecked = Boolean(checkedRows[checkedKey]);
                   return (
                     <div className="review-row" role="row" key={row.section}>

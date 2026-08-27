@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
 import tempfile
@@ -10,7 +11,14 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from src.health_memory import HealthMemoryStore
-from src.health_memory.database import connect
+from src.health_memory.database import (
+    MIGRATIONS_DIR,
+    _apply_one,
+    _create_migration_ledger,
+    _enable_wal,
+    apply_migrations,
+    connect,
+)
 from src.health_memory.store import digest_payload
 from src.serve.coval_health_api import create_app
 
@@ -201,6 +209,25 @@ class HealthMemoryApiTest(unittest.TestCase):
             self.assertEqual(1, connection.execute("SELECT COUNT(*) FROM source_artifacts").fetchone()[0])
             self.assertEqual(1, connection.execute("SELECT COUNT(*) FROM ingestion_jobs").fetchone()[0])
             self.assertEqual(1, connection.execute("SELECT COUNT(*) FROM health_records").fetchone()[0])
+
+    def test_identical_content_from_distinct_sources_preserves_both_provenances(self) -> None:
+        first = self.client.post(
+            "/ingestions",
+            json={**INGESTION, "source_label": "来源 A", "idempotency_key": "source-a"},
+        )
+        second = self.client.post(
+            "/ingestions",
+            json={**INGESTION, "source_label": "来源 B", "idempotency_key": "source-b"},
+        )
+
+        self.assertEqual(201, first.status_code)
+        self.assertEqual(201, second.status_code)
+        self.assertNotEqual(first.json()["id"], second.json()["id"])
+        self.assertEqual("来源 A", first.json()["source"]["label"])
+        self.assertEqual("来源 B", second.json()["source"]["label"])
+        with connect(self.database_path) as connection:
+            self.assertEqual(2, connection.execute("SELECT COUNT(*) FROM source_artifacts").fetchone()[0])
+            self.assertEqual([], connection.execute("PRAGMA foreign_key_check").fetchall())
 
     def test_database_constraints_and_append_only_history(self) -> None:
         record = self.client.post("/ingestions", json=INGESTION).json()
@@ -441,16 +468,75 @@ class HealthMemoryApiTest(unittest.TestCase):
 
         with ThreadPoolExecutor(max_workers=10) as pool:
             versions = list(pool.map(initialize, range(10)))
-        self.assertEqual({7}, set(versions))
+        self.assertEqual({8}, set(versions))
         with connect(database_path) as connection:
             migrations = connection.execute(
                 "SELECT version, COUNT(*) AS count FROM schema_migrations GROUP BY version"
             ).fetchall()
             self.assertEqual(
-                [(1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1), (7, 1)],
+                [(1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1), (7, 1), (8, 1)],
                 [tuple(row) for row in migrations],
             )
             self.assertEqual([], connection.execute("PRAGMA foreign_key_check").fetchall())
+
+    def test_populated_v7_database_migrates_source_parent_without_fk_damage(self) -> None:
+        database_path = Path(self.temp_dir.name) / "populated-v7.sqlite"
+        _enable_wal(database_path)
+        _create_migration_ledger(database_path)
+        for migration_path in sorted(MIGRATIONS_DIR.glob("[0-9][0-9][0-9][0-9]_*.sql")):
+            version = int(migration_path.name.split("_", 1)[0])
+            if version > 7:
+                break
+            sql = migration_path.read_text(encoding="utf-8")
+            _apply_one(
+                database_path,
+                version,
+                migration_path.name,
+                hashlib.sha256(sql.encode("utf-8")).hexdigest(),
+                sql,
+            )
+
+        with connect(database_path) as connection:
+            connection.execute(
+                "INSERT INTO family_members "
+                "(id, name, relation, age, profile, badges_json, created_at, updated_at) "
+                "VALUES ('mom', '合成成员', '测试', 60, '', '[]', 'now', 'now')"
+            )
+            connection.execute(
+                "INSERT INTO source_artifacts "
+                "(id, member_id, artifact_kind, source_label, original_text, content_sha256, "
+                "byte_length, declared_event_date, source_locator_json, captured_at, created_at) "
+                "VALUES ('source-v7', 'mom', 'text', '来源 A', '相同合成文本', ?, 18, "
+                "'2026-08-28', '{}', 'now', 'now')",
+                ("a" * 64,),
+            )
+            connection.execute(
+                "INSERT INTO source_capture_states "
+                "(source_artifact_id, member_id, status, created_at, updated_at) "
+                "VALUES ('source-v7', 'mom', 'captured', 'now', 'now')"
+            )
+            connection.execute(
+                "INSERT INTO audit_events "
+                "(id, member_id, source_artifact_id, action, actor, details_json, created_at) "
+                "VALUES ('audit-v7', 'mom', 'source-v7', 'source_captured', 'test', '{}', 'now')"
+            )
+
+        self.assertEqual(8, apply_migrations(database_path))
+        with connect(database_path) as connection:
+            self.assertEqual([], connection.execute("PRAGMA foreign_key_check").fetchall())
+            self.assertEqual(1, connection.execute("SELECT COUNT(*) FROM source_artifacts").fetchone()[0])
+            self.assertEqual(1, connection.execute("SELECT COUNT(*) FROM source_capture_states").fetchone()[0])
+            self.assertEqual(1, connection.execute("SELECT COUNT(*) FROM audit_events").fetchone()[0])
+            referenced_tables = {
+                row[2]
+                for table in ("source_capture_states", "audit_events")
+                for row in connection.execute(f"PRAGMA foreign_key_list({table})").fetchall()
+            }
+            self.assertNotIn("source_artifacts_v7", referenced_tables)
+            with self.assertRaises(sqlite3.IntegrityError):
+                connection.execute(
+                    "UPDATE source_artifacts SET source_label = 'tampered' WHERE id = 'source-v7'"
+                )
 
     def test_concurrent_same_ingestion_creates_one_record(self) -> None:
         store = HealthMemoryStore(self.database_path)

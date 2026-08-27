@@ -1,5 +1,7 @@
 {
   "schema_version": 1,
+  "current_release_hash_canonicalization": "sha256 of UTF-8 bytes after CRLF-to-LF normalization; matches committed text",
+  "recorded_run_hash_semantics": "historical raw bytes as recorded; line endings may differ from the current release",
   "artifact_id": "coval-heyi-phase2-local-inference-historical-v1",
   "evidence_status": "HISTORICAL_LOCAL_AUDIT_NOT_REPRODUCIBLE_FROM_RELEASE_COMMIT",
   "measured_at": "2026-08-19",
@@ -7,12 +9,16 @@
   "clinical_validation": false,
   "source_reports": [
     {
-      "path": "docs/PHASE_2_LOCAL_INFERENCE.md",
-      "sha256": "1d122e57a7e605153f19e62df3bba1f88bfbb8c552a7ea162bc1b8df683d19e4"
+      "recorded_run_path": "docs/PHASE_2_LOCAL_INFERENCE.md",
+      "recorded_run_sha256": "1d122e57a7e605153f19e62df3bba1f88bfbb8c552a7ea162bc1b8df683d19e4",
+      "current_release_path": "docs/PHASE_2_LOCAL_INFERENCE.md",
+      "current_release_sha256": "6961d118836f7ab22a7462ec92d29e662b8abac1235a72e8c91698c67994ec39"
     },
     {
-      "path": "docs/PHASE_2B_SAFETY_INTENT.md",
-      "sha256": "3f1e198f861ab0be094fe0b901f14789e773341c736b02c1d9a15f8912e6fd42"
+      "recorded_run_path": "docs/PHASE_2B_SAFETY_INTENT.md",
+      "recorded_run_sha256": "3f1e198f861ab0be094fe0b901f14789e773341c736b02c1d9a15f8912e6fd42",
+      "current_release_path": "docs/PHASE_2B_SAFETY_INTENT.md",
+      "current_release_sha256": "7145103a437b74a4f29852e8e998c5bee8e1d5bf60761c1809a9ab497ed225f8"
     }
   ],
   "release_provider_source": {
@@ -32,7 +38,7 @@
     "medication_contrast_v0": "22e7979d2d4bcdf3742953fe1e0f6b9395f0506ead729e78a30c887ccea4924c",
     "safety_onset_edge_v1_1": "eb9bb5a0681c60885a91377a018bec327533b549195af68f8f7c3462563d0c9f"
   },
-  "fixed_slice_results": [
+  "context_contaminated_fixed_slice_results": [
     {
       "slice": "synthetic_v0",
       "n": 10,

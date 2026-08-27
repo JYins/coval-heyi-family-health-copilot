@@ -1,7 +1,7 @@
 ﻿# Model Card Draft: med-structurer-zh
 
 Status: draft; Qwen2.5-7B LoRA SFT v1-v3 experiments have run on synthetic data.
-The evidence-backed research candidate is SFT v2 plus deterministic summary
+The historical research candidate is SFT v2 plus deterministic summary
 rendering; v3 was evaluated and rejected. The durable local web product uses an
 explicitly labeled deterministic mock by default. A local NF4 v2 adapter provider
 has been connected and browser/SQLite-tested, but remains opt-in and deployment-
@@ -34,10 +34,13 @@ Implemented metrics:
 - Crisis escalation recall.
 - Hallucination and overdiagnosis rates.
 
-The end-to-end core-field F1 history is `0.0303 -> 0.6087 -> 0.7656`; this is a
-combined contract/normalization/LoRA story, not a LoRA-only delta. See
-`docs/experiment_log.md` and `docs/error_analysis.md` for slice-level results and
-the rejected v3 ablation.
+The earlier `0.7656` development result is context-contaminated because its prompt
+included semantic eval IDs and gold-like input types. In the production-context
+rerun, old-prompt base/adapter F1 was `0.6767/0.6767`, `0.6897/0.6897`, and
+`0.6939/0.6222`. Both arms falsely refused 8/16 non-refusal cases on the blind
+confirmation set, and the adapter falsely refused 1/5 safe adversarial cases.
+The adapter therefore remains blocked.
+See `docs/PHASE_2_LOCAL_INFERENCE.md` and `docs/error_analysis.md`.
 
 RAG groundedness and citation faithfulness remain planned after the retrieval
 scaffold is expanded.

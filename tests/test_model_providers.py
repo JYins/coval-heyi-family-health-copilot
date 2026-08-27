@@ -125,7 +125,7 @@ class ModelProviderTest(unittest.TestCase):
         descriptor = provider.describe()
         self.assertEqual("transformers_base", descriptor.provider)
         self.assertIsNone(descriptor.adapter_ref)
-        self.assertEqual("base-schema-v3-template-v1", descriptor.extraction_version)
+        self.assertEqual("local-base-schema-v3-template-v1", descriptor.extraction_version)
 
     def test_provider_backed_ingestion_is_offline_idempotent_and_persists_provenance(self) -> None:
         calls = 0
@@ -153,8 +153,9 @@ class ModelProviderTest(unittest.TestCase):
             self.assertEqual(1, calls)
             record = first.json()
             self.assertEqual("transformers_adapter", record["extraction"]["provider"])
-            self.assertIn("LoRA SFT v2", record["extraction"]["model_ref"])
-            self.assertEqual("sft-v2-schema-v3-template-v1", record["extraction"]["extraction_version"])
+            self.assertIn("test-only callable generator", record["extraction"]["model_ref"])
+            self.assertIn("test-only callable adapter", record["extraction"]["model_ref"])
+            self.assertEqual("test-callable-schema-v3", record["extraction"]["extraction_version"])
 
     def test_prompt_version_is_instance_scoped_and_product_context_has_no_gold_metadata(self) -> None:
         captured: list[dict[str, str]] = []
@@ -170,7 +171,7 @@ class ModelProviderTest(unittest.TestCase):
 
         self.assertEqual("schema_v3_intent_v1", provider.describe().prompt_version)
         self.assertEqual(
-            "sft-v2-schema-v3-intent-v1-template-v1",
+            "test-callable-schema-v3-intent-v1",
             provider.describe().extraction_version,
         )
         self.assertIn("样本ID：local_request", captured[1]["content"])
@@ -179,6 +180,24 @@ class ModelProviderTest(unittest.TestCase):
         self.assertNotIn("safety_request", captured[1]["content"])
         self.assertEqual("local_request", result.trace["prompt_item_id"])
         self.assertEqual("text", result.trace["prompt_input_type"])
+
+    def test_unverified_local_adapter_is_never_labeled_as_accepted_v2(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "COVAL_MODEL_PROVIDER": "transformers_adapter",
+                "COVAL_MODEL_BASE_PATH": str(Path(tempfile.gettempdir()) / "some-local-base"),
+                "COVAL_MODEL_ADAPTER_PATH": str(Path(tempfile.gettempdir()) / "some-local-adapter"),
+            },
+            clear=True,
+        ):
+            provider = build_provider_from_env()
+
+        descriptor = provider.describe()
+        self.assertIn("identity unverified", descriptor.model_ref)
+        self.assertIn("identity unverified", descriptor.adapter_ref or "")
+        self.assertNotIn("SFT v2", descriptor.model_ref)
+        self.assertEqual("local-adapter-schema-v3-template-v1", descriptor.extraction_version)
 
     def test_safety_trace_separates_model_guard_and_final_decisions(self) -> None:
         model_refusal = CallableJsonProvider(lambda _messages: valid_prediction(refused=True))

@@ -38,9 +38,8 @@ from src.serve.demo_structuring import structure_record as deterministic_structu
 
 PROMPT_VERSION = "schema_v3"
 CONTRACT_VERSION = "health-memory-v1"
-ACCEPTED_MODEL_REF = "Qwen/Qwen2.5-7B-Instruct"
-ACCEPTED_ADAPTER_REF = "LoRA SFT v2 + deterministic summary patch"
-EXTRACTION_VERSION = "sft-v2-schema-v3-template-v1"
+UNVERIFIED_MODEL_REF = "local causal model (identity unverified)"
+UNVERIFIED_ADAPTER_REF = "local PEFT adapter (identity unverified)"
 MAX_ATTEMPTS = 2
 STRUCTURED_COLLECTION_FIELDS = (
     "lab_items",
@@ -82,7 +81,12 @@ def _extraction_version(provider: str, prompt_version: str) -> str:
         "schema_v3_intent_v1": "schema-v3-intent-v1",
     }
     suffix = suffixes.get(prompt_version, prompt_version.replace("_", "-"))
-    prefix = "base" if provider == "transformers_base" else "sft-v2"
+    prefixes = {
+        "transformers_base": "local-base",
+        "transformers_adapter": "local-adapter",
+        "llama_cpp": "local-gguf",
+    }
+    prefix = prefixes.get(provider, provider.replace("_", "-"))
     return f"{prefix}-{suffix}-template-v1"
 
 
@@ -254,8 +258,8 @@ class UnavailableProvider:
         return ProviderDescriptor(
             provider=self._provider,
             state="error",
-            model_ref=ACCEPTED_MODEL_REF,
-            adapter_ref=ACCEPTED_ADAPTER_REF,
+            model_ref=UNVERIFIED_MODEL_REF,
+            adapter_ref=(UNVERIFIED_ADAPTER_REF if self._provider == "transformers_adapter" else None),
             extraction_version=_extraction_version(self._provider, self._prompt_version),
             prompt_version=self._prompt_version,
             contract_version=CONTRACT_VERSION,
@@ -284,8 +288,8 @@ class LocalJsonModelProvider(ABC):
     def __init__(
         self,
         *,
-        model_ref: str = ACCEPTED_MODEL_REF,
-        adapter_ref: str | None = ACCEPTED_ADAPTER_REF,
+        model_ref: str = UNVERIFIED_MODEL_REF,
+        adapter_ref: str | None = UNVERIFIED_ADAPTER_REF,
         extraction_version: str | None = None,
         prompt_version: str = PROMPT_VERSION,
         max_new_tokens: int = 1536,
@@ -490,8 +494,8 @@ class TransformersAdapterProvider(LocalJsonModelProvider):
         base_path: Path,
         adapter_path: Path,
         *,
-        model_ref: str = ACCEPTED_MODEL_REF,
-        adapter_ref: str = ACCEPTED_ADAPTER_REF,
+        model_ref: str = UNVERIFIED_MODEL_REF,
+        adapter_ref: str = UNVERIFIED_ADAPTER_REF,
         prompt_version: str = PROMPT_VERSION,
         max_new_tokens: int = 1536,
         device_map: str = "auto",
@@ -621,7 +625,7 @@ class TransformersBaseProvider(TransformersAdapterProvider):
     ) -> None:
         LocalJsonModelProvider.__init__(
             self,
-            model_ref=ACCEPTED_MODEL_REF,
+            model_ref=UNVERIFIED_MODEL_REF,
             adapter_ref=None,
             extraction_version=_extraction_version("transformers_base", prompt_version),
             prompt_version=prompt_version,
@@ -680,8 +684,8 @@ class LlamaCppProvider(LocalJsonModelProvider):
         self,
         model_path: Path,
         *,
-        model_ref: str = "Qwen2.5-7B-Instruct + LoRA SFT v2 GGUF",
-        adapter_ref: str = ACCEPTED_ADAPTER_REF,
+        model_ref: str = "local GGUF model (identity unverified)",
+        adapter_ref: str = UNVERIFIED_ADAPTER_REF,
         prompt_version: str = PROMPT_VERSION,
         max_new_tokens: int = 1536,
         n_ctx: int = 4096,
@@ -752,7 +756,12 @@ class CallableJsonProvider(LocalJsonModelProvider):
         *,
         prompt_version: str = PROMPT_VERSION,
     ) -> None:
-        super().__init__(prompt_version=prompt_version)
+        super().__init__(
+            model_ref="test-only callable generator",
+            adapter_ref="test-only callable adapter",
+            extraction_version=f"test-callable-{prompt_version.replace('_', '-')}",
+            prompt_version=prompt_version,
+        )
         self._generator = generator
 
     def _load(self) -> None:

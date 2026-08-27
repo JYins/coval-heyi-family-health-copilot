@@ -1,21 +1,62 @@
 {
   "schema_version": 1,
+  "current_release_hash_canonicalization": "sha256 of UTF-8 bytes after CRLF-to-LF normalization; matches committed text",
+  "recorded_run_hash_semantics": "historical raw bytes as recorded; line endings may differ from the current release",
   "artifact_id": "coval-heyi-phase2b-safety-intent-historical-v1",
   "evidence_status": "HISTORICAL_LOCAL_AUDIT_NOT_REPRODUCIBLE_FROM_RELEASE_COMMIT",
   "measured_at": "2026-08-20",
   "data_policy": "synthetic_public_only",
   "clinical_validation": false,
   "source_report": {
-    "path": "docs/PHASE_2B_SAFETY_INTENT.md",
-    "sha256": "3f1e198f861ab0be094fe0b901f14789e773341c736b02c1d9a15f8912e6fd42"
+    "recorded_run_path": "docs/PHASE_2B_SAFETY_INTENT.md",
+    "recorded_run_sha256": "3f1e198f861ab0be094fe0b901f14789e773341c736b02c1d9a15f8912e6fd42",
+    "current_release_path": "docs/PHASE_2B_SAFETY_INTENT.md",
+    "current_release_sha256": "7145103a437b74a4f29852e8e998c5bee8e1d5bf60761c1809a9ab497ed225f8"
   },
+  "machine_receipts": [
+    {
+      "path": "artifacts/public/phase2b_safety_intent/receipts/FOUR_ARM_COMPARISON.json",
+      "recorded_run_sha256": "1f0f464fc02a8614640696a9e79a391f7292abac541db0eccecf694ec06f52ba",
+      "current_release_sha256": "8f35351a57b9c9c74e84bd7049016d64ab6c9c58d98d97dd878bffb27e9e6fad"
+    },
+    {
+      "path": "artifacts/public/phase2b_safety_intent/receipts/EXPERIMENT_MANIFEST.json",
+      "current_release_sha256": "646b091ba7fc938be38f89394b1d529f15a2f9ba47ef79a4473e3183e96543b1"
+    },
+    {
+      "path": "artifacts/public/phase2b_safety_intent/receipts/RESEARCH_CONTRACT.md",
+      "current_release_sha256": "a38f3d080daa5346343dd09d58a126c592012f12b1e261ada52d32f86b6dc189"
+    },
+    {
+      "path": "artifacts/public/phase2b_safety_intent/receipts/CLAIM_LEDGER.csv",
+      "current_release_sha256": "004588a424703f9b2321b23cf2bb65a70645a53fc691c0517ea3889a95bd2aff"
+    },
+    {
+      "path": "artifacts/public/phase2b_safety_intent/receipts/DATA_INVARIANTS.json",
+      "current_release_sha256": "383ae64a922530bfc5c94862ccb5abd193a1ecf76d250303aa264442ff43b4c4"
+    },
+    {
+      "path": "artifacts/public/phase2b_safety_intent/receipts/DETERMINISTIC_BASELINE_RESULT.json",
+      "current_release_sha256": "303b494f919cc82f86ca6284f0596d6b3775682729ebe8de8ec5864c3a8a1b19"
+    }
+  ],
   "release_provider_source": {
     "path": "src/inference/providers.py",
     "sha256_before_release_commit": "2cb6dede8245b616265c57ee75872b5247efc7c62e97ed70c08a07699c5e6bae"
   },
-  "dataset_hashes": {
+  "recorded_run_dataset_hashes": {
     "safety_intent_contrast_v0": "71bd5bb646ebe9a7ab669685d027d2d88061c90eb7bae59aef7d5e62da32420e",
     "safety_intent_adversarial_v0": "fccaa07ced4113585bf45166974ffa92abb6c988a488d44e7cb35e39e4e88d44"
+  },
+  "current_release_dataset_hashes": {
+    "safety_intent_contrast_v0": {
+      "path": "eval/gold/safety_intent_contrast_v0.jsonl",
+      "sha256": "71bd5bb646ebe9a7ab669685d027d2d88061c90eb7bae59aef7d5e62da32420e"
+    },
+    "safety_intent_adversarial_v0": {
+      "path": "eval/gold/safety_intent_adversarial_v0.jsonl",
+      "sha256": "fccaa07ced4113585bf45166974ffa92abb6c988a488d44e7cb35e39e4e88d44"
+    }
   },
   "frozen_run": {
     "total_rows_per_arm": 50,
@@ -23,16 +64,30 @@
     "arms": [
       {
         "name": "base_schema_v3",
+        "production_context_extraction_f1": {
+          "synthetic_v0": 0.6767,
+          "medication_contrast_v0": 0.6897,
+          "safety_onset_edge_v1_1": 0.6939
+        },
         "confirm_refusal": "8/8",
         "confirm_crisis": "4/4",
         "confirm_false_refusal_cases": "8/16",
+        "confirm_false_refusal_rate": 0.5,
+        "adversarial_false_refusal_rate": 0.0,
         "decision": "BASELINE_ONLY"
       },
       {
         "name": "adapter_schema_v3",
+        "production_context_extraction_f1": {
+          "synthetic_v0": 0.6767,
+          "medication_contrast_v0": 0.6897,
+          "safety_onset_edge_v1_1": 0.6222
+        },
         "confirm_refusal": "8/8",
         "confirm_crisis": "4/4",
         "confirm_false_refusal_cases": "8/16",
+        "confirm_false_refusal_rate": 0.5,
+        "adversarial_false_refusal_rate": 0.2,
         "decision": "BASELINE_ONLY"
       },
       {
@@ -53,7 +108,9 @@
   },
   "latency": {
     "base_schema_v3_e2e_p50_seconds": 10.761,
+    "base_schema_v3_e2e_p95_seconds": 20.548,
     "adapter_schema_v3_e2e_p50_seconds": 16.142,
+    "adapter_schema_v3_e2e_p95_seconds": 28.824,
     "base_candidate_e2e_p50_seconds": 9.231,
     "adapter_candidate_e2e_p50_seconds": 16.293,
     "causal_performance_claim": false

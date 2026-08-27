@@ -13,7 +13,7 @@ It is not a diagnosis or medication-advice system. The product organizes informa
 - A product story grounded in the author's earlier Coval AI memo work, clinic/Phlox workflow thinking for doctor-facing services, and a family need: keeping up with frequent checkups, reports, medication notes, and daily blood-pressure records at home.
 - A migration-backed local product spine for synthetic family health memory: capture-first immutable source evidence, leased failure recovery, candidate review, server-confirmed save, append-only versions, timeline reload, safety evidence, and undo.
 - An OCR/ASR intake design for the future software service; the current UI exposes labeled stubs and does not process files or audio.
-- An evaluation-first LoRA/QLoRA workflow for Chinese medical-record structuring.
+- An evaluation-first LoRA workflow for Chinese medical-record structuring; QLoRA remains a planned option, not a completed training claim.
 - Public/synthetic-only training and evaluation artifacts suitable for a private GitHub/Hugging Face trace.
 - A measured model story: the v2 adapter is integrated but deployment-blocked; SFT v3 and a Phase 2b prompt candidate were evaluated and rejected. The product default remains `mock-rules-v2` plus deterministic safety controls.
 
@@ -35,7 +35,7 @@ The web UI is a Next.js app under `apps/coval-health-web`.
 - Failed local-model work remains visible in a recovery inbox. Atomic leases prevent concurrent retries from both becoming canonical memory, and rejection invalidates late model output.
 - API/database/provider states are visible. If the API is offline, writes are disabled rather than silently falling back to an in-memory success state.
 - Demo-only hooks such as local OCR/PDF intake are clearly labeled and do not read real files in the public example.
-- Screenshots in `docs/assets/` are browser captures regenerated on 2026-08-24 from the tested desktop and mobile flows.
+- Screenshots in `docs/assets/` are browser captures regenerated on 2026-08-28 from the tested desktop and mobile flows.
 
 ## OCR And ASR Service Design
 
@@ -156,6 +156,10 @@ $env:COVAL_TRANSFORMERS_LOAD_IN_4BIT = "true"
 Model providers require explicit local paths, force Hugging Face offline mode,
 and never fall back silently to mock. `scripts/benchmark_local_provider.py`
 adds a non-loopback socket guard for the fixed synthetic latency/quality run.
+An arbitrary local path is deliberately recorded as identity-unverified; it is
+not labeled as the historical v2 candidate until a pinned full-file identity
+manifest exists. Historical v2 identity and measurements live only in the
+curated public evidence summary.
 `transformers_base` is an adapter-off causal benchmark only;
 `scripts/compare_local_inference.py` compares it with mock, local v2, and the
 recorded historical v2 metrics.
@@ -168,14 +172,24 @@ Historical evidence-backed candidate:
 Qwen/Qwen2.5-7B-Instruct + LoRA SFT v2 + deterministic summary template
 ```
 
-Historical small-slice synthetic eval highlights (`n=10`, `n=4`, and `n=6`
-respectively; these are controlled regression slices, not clinical validation):
+Production-equivalent local NF4 regression results (`n=10`, `n=4`, and `n=6`
+respectively; development slices, not an independent test set or clinical validation):
 
-| Slice | Extraction F1 | Relaxed summary | Safety refusal | Crisis recall |
-| --- | ---: | ---: | ---: | ---: |
-| synthetic_v0 | 0.7656 | 0.8108 | 100% | 100% |
-| medication_contrast_v0 | 0.9032 | 0.9444 | 100% | n/a |
-| safety_onset_edge_v1_1 | 0.8261 | 0.9474 | 100% | 100% |
+| Slice | Base NF4 F1 | Adapter NF4 F1 | Adapter - base |
+| --- | ---: | ---: | ---: |
+| synthetic_v0 | 0.6767 | 0.6767 | 0.0000 |
+| medication_contrast_v0 | 0.6897 | 0.6897 | 0.0000 |
+| safety_onset_edge_v1_1 | 0.6939 | 0.6222 | -0.0717 |
+
+On the separate 24-row blind confirmation set, both old-prompt arms refused 8
+of 16 non-refusal cases (50% false refusal). The adapter also falsely refused
+1/5 safe adversarial cases. These product-context results do not establish
+adapter superiority and block deployment.
+
+Decision: **BLOCKED**. Earlier `0.7656 / 0.9032 / 0.8261` values came from
+context-contaminated development prompts containing semantic eval IDs and
+gold-like input types. They remain documented as a correction, not as headline
+quality evidence.
 
 SFT v3 was trained and evaluated, but it is not the default candidate. It matched the v2 template-patch path on the medication and onset slices, but regressed on synthetic_v0 summary strictness and false refusal.
 
@@ -199,7 +213,7 @@ See:
 
 This repo is intentionally framed as an evaluation-first product prototype, not a production medical agent.
 
-- The headline LoRA result is a failure-driven small-sample SFT. `sft_v2` has 26 synthetic hand-authored rows: 20 train and 6 validation. The training loop was short, about 14.48 seconds and 3 global steps. The improvement is real in this controlled harness, but the claim is about data quality, failure targeting, and evaluation discipline rather than dataset scale.
+- The LoRA experiment is a failure-driven small-sample SFT. `sft_v2` has 26 synthetic hand-authored rows: 20 train and 6 validation, and the run completed only 3 optimization steps. Production-equivalent local evaluation did not establish adapter superiority and exposed false-refusal regressions, so the candidate was not promoted.
 - The local product layer is a Next.js/FastAPI/SQLite prototype over synthetic examples. Its durable path now has migrations, capture-before-inference, retry leases, immutable sources, candidate approval, versions, idempotency, audit/safety evidence, process-restart recovery, and browser-tested undo.
 - The default structuring provider is still `mock-rules-v2`. The API now has
   explicit `transformers_base`, `transformers_adapter`, and `llama_cpp`
@@ -310,6 +324,6 @@ npm.cmd run build
 This is one project with two faces:
 
 1. A real private product for organizing long-term family health information.
-2. A portfolio-grade LoRA/QLoRA evaluation project with concrete metrics, failure analysis, and ablation decisions.
+2. A portfolio-grade LoRA evaluation project with concrete metrics, leakage correction, failure analysis, and model-rejection decisions.
 
 The research contribution is not a generic chatbot. It is an evaluation-first Chinese medical-record structuring and safety system connected to a local product workflow.

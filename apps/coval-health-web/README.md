@@ -76,7 +76,7 @@ ports. See `tests-e2e/durable-memory.spec.ts`.
 Current model evidence shown in the UI:
 
 - Base model: `Qwen/Qwen2.5-7B-Instruct`
-- Research default candidate: `LoRA SFT v2 + deterministic summary patch`
+- Historical research candidate: `LoRA SFT v2 + deterministic summary patch` (deployment blocked)
 - Default product runtime: `mock-rules-v2`; local v2 NF4 has also completed a
   real browser/SQLite synthetic E2E but remains opt-in: the frozen same-local
   unquantized comparator was not runnable on this GPU, while false refusals and
@@ -85,7 +85,7 @@ Current model evidence shown in the UI:
   `transformers_adapter`, and `llama_cpp`;
   missing local artifacts produce a visible error instead of mock fallback.
 - Latest ablation: `SFT v3 completed; not adopted`
-- Evidence source: `GET /model-evidence`, backed by local result files under `results/`
+- Evidence source: `GET /model-evidence`, backed by committed curated summaries under `artifacts/public/`
 
 ## Product Position
 

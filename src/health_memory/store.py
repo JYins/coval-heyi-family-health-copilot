@@ -197,9 +197,10 @@ class HealthMemoryStore:
                 """
                 SELECT id FROM source_artifacts
                 WHERE member_id = ? AND artifact_kind = ?
-                  AND content_sha256 = ? AND declared_event_date IS ?
+                  AND source_label = ? AND content_sha256 = ?
+                  AND declared_event_date IS ?
                 """,
-                (member_id, artifact_kind, content_digest, declared_event_date),
+                (member_id, artifact_kind, source_label, content_digest, declared_event_date),
             ).fetchone()
             source_id = str(source["id"]) if source else new_id()
             if source is None:
@@ -461,9 +462,10 @@ class HealthMemoryStore:
                 FROM source_artifacts s
                 JOIN health_records r ON r.source_artifact_id = s.id
                 WHERE s.member_id = ? AND s.artifact_kind = ?
-                  AND s.content_sha256 = ? AND s.declared_event_date IS ?
+                  AND s.source_label = ? AND s.content_sha256 = ?
+                  AND s.declared_event_date IS ?
                 """,
-                (member_id, artifact_kind, content_digest, declared_event_date),
+                (member_id, artifact_kind, source_label, content_digest, declared_event_date),
             ).fetchone()
             if existing:
                 self._save_idempotency(
