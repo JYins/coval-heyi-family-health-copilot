@@ -1,329 +1,108 @@
-# Coval HeYi: Family Health Memory Copilot
+# Coval HeYi · 家庭健康记忆 / Family Health Memory
 
-Coval HeYi is a private-first Chinese family health memory copilot prototype. This public build is synthetic/public-safe only: it turns fictional health notes and blood-pressure/symptom updates into reviewable structured records, doctor-facing summaries, and safety prompts. OCR/ASR, reminders, and weekly reports remain planned product stages.
+一个把零散健康信息变成**可核对、可追溯的长期记录**的本地产品原型。它帮助家人整理症状、血压和就诊资料，在下次看医生前准备摘要；它**不诊断、不推荐用药，也不能替代医生**。
 
-It is not a diagnosis or medication-advice system. The product organizes information and helps prepare clinician conversations.
+A local prototype that turns scattered health notes into a **reviewable, traceable family timeline** and a doctor-facing visit brief. It does **not** diagnose, prescribe, or replace a clinician.
 
-![Coval HeYi desktop review sheet](docs/assets/coval-heyi-desktop.png)
+> **当前边界 / Current boundary:** 公开版只供合成或公开示例演示。**请勿输入真实家庭或患者资料。** 真实数据所需的加密、身份验证和删除机制尚未通过门禁。
+>
+> The public build is for synthetic/public examples only. **Do not enter real family or patient data.**
 
-![Coval HeYi mobile record screen](docs/assets/coval-heyi-mobile.png)
+![桌面端：先核对，再保存到健康记忆 / Desktop: review before save](docs/assets/coval-heyi-desktop.png)
 
-## What This Project Shows
+<img src="docs/assets/coval-heyi-mobile.png" alt="手机端：合成数据的新建记录流程 / Mobile synthetic new-record flow" width="310" />
 
-- A product story grounded in the author's earlier Coval AI memo work, clinic/Phlox workflow thinking for doctor-facing services, and a family need: keeping up with frequent checkups, reports, medication notes, and daily blood-pressure records at home.
-- A migration-backed local product spine for synthetic family health memory: capture-first immutable source evidence, leased failure recovery, candidate review, server-confirmed save, append-only versions, timeline reload, safety evidence, and undo.
-- An OCR/ASR intake design for the future software service; the current UI exposes labeled stubs and does not process files or audio.
-- An evaluation-first LoRA workflow for Chinese medical-record structuring; QLoRA remains a planned option, not a completed training claim.
-- Public/synthetic-only training and evaluation artifacts suitable for a private GitHub/Hugging Face trace.
-- A measured model story: the v2 adapter is integrated but deployment-blocked; SFT v3 and a Phase 2b prompt candidate were evaluated and rejected. The product default remains `mock-rules-v2` plus deterministic safety controls.
+截图来自浏览器中的合成数据流程；OCR、语音、每日血压和家庭周报等入口不等于这些能力已经全部上线。
 
-## Product Origin
+Both screenshots show the synthetic demo, not real patient data or a completed OCR/ASR service.
 
-Coval began as an AI memory product: collect fragmented context, preserve useful personal history, and turn it into timely briefings. Coval HeYi applies that memory pattern to family health.
+## 中文：我想解决什么问题
 
-The product direction also borrows discipline from clinic/Phlox work: healthcare AI should be a reviewable workflow, not a loose chatbot. The useful loop is capture -> structure -> verify -> save -> summarize for the next care conversation.
+一次就诊留下的报告、口头症状、血压数字和药物信息，往往散落在不同地方。下次复诊时，家人需要重新拼凑时间线。Coval HeYi 的目标是做一个家庭自己掌控的“健康记忆”：**先保存原话和来源，再用模型整理成候选事实，由人确认后才写入长期记录**。最后用这些已确认的信息准备给医生看的摘要和待问问题，而不是让聊天机器人猜诊断。
 
-The future family-facing motivation is practical. A parent who often goes for checkups may accumulate lab reports, appointment notes, medication changes, and daily blood-pressure readings faster than the family can organize them. The intended product direction is a local home-running memory layer, but this build must not receive real family or patient data until every threat-model gate passes.
+我把它同时当成产品和研究项目。产品要能在失败、重启、误点和重复提交时保住记录；模型要有可重复的评测，只有在安全和质量门禁通过时才能成为默认能力。
 
-## Current UI
+### 今天真正能做的事
 
-The web UI is a Next.js app under `apps/coval-health-web`.
+1. 在本地网页录入**虚构**的家庭成员、症状、血压或文字记录。原文先进入 SQLite；推理失败后仍能从待处理列表恢复。
+2. 查看和修改结构化候选内容；未确认的候选不会进入正式健康时间线。保存后可再编辑、查看版本、撤销到旧内容（撤销也新增版本，不抹掉历史）。
+3. 生成非诊断性的就诊摘要、待补信息和安全提示。确定性规则负责危急症状升级和部分用药边界，模型不能覆盖这些规则。
+4. 用命令行对**合成演示数据库**做校验、备份、干净路径恢复，以及保守的 FHIR R4 文档 Bundle 导出。备份**未加密、未签名**，不能用于真实医疗资料。
 
-- Desktop: a one-viewport family health workbench with record intake, smart organization, family review confirmation, doctor-facing summary, missing-info checklist, visit-prep checklist, safety boundary, and compact project evidence.
-- Mobile: an iOS-like `New Record` page that opens directly on the recording workflow, with member selection, OCR/voice/blood-pressure modes, source/date/missing-field context, smart organization, and save-after-review state.
-- The UI accepts arbitrary editable fictional notes, members, dates, and source labels and calls the local FastAPI/SQLite service for the implemented synthetic workflow: persist source -> organize/recover -> edit/review -> approve -> versioned timeline -> undo.
-- Failed local-model work remains visible in a recovery inbox. Atomic leases prevent concurrent retries from both becoming canonical memory, and rejection invalidates late model output.
-- API/database/provider states are visible. If the API is offline, writes are disabled rather than silently falling back to an in-memory success state.
-- Demo-only hooks such as local OCR/PDF intake are clearly labeled and do not read real files in the public example.
-- Screenshots in `docs/assets/` are browser captures regenerated on 2026-08-28 from the tested desktop and mobile flows.
+实现链条：`Next.js 页面 → FastAPI → 原文/来源持久化 → 本地推理 provider → 家人核对 → SQLite 版本化时间线 → 就诊摘要/安全提示`。默认 provider 是明确标注的 `mock-rules-v2`，不是微调模型。[当前能力清单](docs/CURRENT_STATE.md)列出每一项的证据和限制。
 
-## OCR And ASR Service Design
+### 为什么这样设计
 
-OCR and ASR are part of the software-service design, but the current public demo uses synthetic text and demo stubs rather than real family files.
+| 决策 | 解决的问题 | 证据 |
+| --- | --- | --- |
+| 先存原文，再做推理 | 模型失败也不丢输入；租约和版本检查挡住并发重试、过期结果 | [ADR 0001](docs/adr/0001-capture-first-leased-processing.md) |
+| 人确认后才进时间线 | 机器提取结果只是候选；修改和撤销都留痕 | [ADR 0002](docs/adr/0002-review-before-canonical-memory.md) |
+| 安全规则与模型分层 | 候选模型接上了，也不代表可以上线 | [ADR 0003](docs/adr/0003-model-gates-over-model-optimism.md) |
+| 备份不等于隐私保护 | 校验和恢复已测；未加密的 v1 包仍禁止真实数据 | [ADR 0004](docs/adr/0004-vault-v1-is-portability-not-privacy.md) |
 
-Planned local-first flow:
+### 微调到底做出了什么
 
-1. OCR intake: phone report photo, PDF, or pasted OCR text. In the public web demo this appears as a local-intake hook, not a real file upload.
-2. ASR intake: family voice note or symptom description -> transcript.
-3. Structuring: the same medical schema handles OCR text, ASR transcript, manual notes, medication records, and blood-pressure entries.
-4. Review: uncertain facts become family-verifiable rows with explicit `核对` / `补充` states and are not silently saved.
-5. Timeline: user-confirmed records enter the local family memory database.
-6. Weekly report: a worker can summarize new records, missing fields, reminders, and doctor-prep questions.
+使用 `Qwen/Qwen2.5-7B-Instruct` 做过一次小样本 LoRA SFT v2：**20 条人工合成训练样本、6 条验证样本，3 个优化步骤**。历史本地实验中，适配器通过 provider 接入 API、浏览器和 SQLite；当前默认仍是 mock。重新启用本地模型还需要核对完整模型及适配器文件身份。实验的“断网”是离线环境变量、只读本地模型路径及阻止非本机网络的 socket guard，**不是真拔网线**。
 
-Production implementation should prefer local OCR/ASR engines for private mode, with cloud providers only if explicitly configured by the user.
+更重要的是，上线门禁**拒绝了**这个候选。生产调用形态下，三个定向合成切片的抽取 F1（基础模型 → LoRA）为 `0.6767→0.6767`、`0.6897→0.6897`、`0.6939→0.6222`。另一个盲确认集里，基础模型与适配器都把 16 个无需拒答案例中的 8 个误拒；适配器在 5 个安全对抗案例中又误拒 1 个。早期更好看的数字受评测标签泄漏影响，已在实验记录中更正。**结论不是“LoRA 提升了医疗能力”，而是“接入成功，但证据不支持把它设为默认”。** [本地推理报告](docs/PHASE_2_LOCAL_INFERENCE.md) · [产品形态复评](docs/PHASE_2B_SAFETY_INTENT.md) · [公开证据清单](docs/CLAIM_LEDGER.md)
 
-## Safety And Privacy Boundary
+### 本地试用（Windows PowerShell，合成数据）
 
-- Public artifacts use only public or synthetic data.
-- Real family medical data must not enter Git, Hugging Face, logs, cloud services, Narval jobs, or training data.
-- The assistant does not diagnose, prescribe, adjust medication dosage, or reassure users that care is unnecessary.
-- Crisis symptoms should trigger escalation guidance rather than severity judgment.
-- `COVAL_REAL_DATA_MODE=1` is an explicit opt-in fail-closed sentinel. It cannot determine whether pasted content is real; the UI therefore requires synthetic-only acknowledgement. Real use remains blocked on full-database/WAL encryption, OS key custody and recovery, authentication, encrypted backup, verified purge, and a fixed/pinned SQLite Windows package.
-
-See [the architecture](docs/ARCHITECTURE.md), [threat model](docs/THREAT_MODEL.md),
-[claim ledger](docs/CLAIM_LEDGER.md), and [90-second demo](docs/DEMO_90S.md).
-
-## Local Web Demo
-
-Install once:
+环境：Python 3.12、Node.js 22；CI 在 Linux 上运行后端/前端测试。初次安装：
 
 ```powershell
-cd <repo-root>
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 cd apps\coval-health-web
 npm.cmd ci
 ```
 
-Start the API in terminal 1:
+在仓库根目录开两个终端：
 
 ```powershell
-cd <repo-root>
+# 终端 1：API
 .\.venv\Scripts\python.exe -m uvicorn src.serve.coval_health_api:app --host 127.0.0.1 --port 8000
 ```
 
-Start the web app in terminal 2:
-
 ```powershell
-cd <repo-root>\apps\coval-health-web
+# 终端 2：网页
+cd apps\coval-health-web
 npm.cmd run dev
 ```
 
-Open `http://127.0.0.1:3000`. The frontend may retain packaged research-evidence
-text while offline, but it shows the failure and disables every durable write.
-The default development database is `data/local/coval_health.sqlite` and is
-ignored by Git; set `COVAL_DATA_DIR` or `COVAL_HEALTH_DB_PATH` to override it.
-
-## Portable Vault Backup And FHIR Export
-
-The vault CLI works without a model. It creates a consistent SQLite snapshot,
-adds a SHA-256/byte-count manifest and one FHIR R4 document Bundle per family
-member, verifies the package, and restores only into a clean database path:
+打开 `http://127.0.0.1:3000`。默认数据库在被 Git 忽略的 `data/local/coval_health.sqlite`。网页要求确认“仅限虚构/公开数据”；这只是防误用提示，**不能自动识别并阻止真实资料**。API 不可用时，页面会显示错误并禁用持久化写入。完整测试入口：
 
 ```powershell
-cd <repo-root>
-.\.venv\Scripts\python.exe scripts\manage_vault.py backup `
-  --database data\local\coval_health.sqlite `
-  --output backups\synthetic-demo.coval `
-  --acknowledge-synthetic-only-unencrypted
-.\.venv\Scripts\python.exe scripts\manage_vault.py verify `
-  --archive backups\synthetic-demo.coval
-.\.venv\Scripts\python.exe scripts\manage_vault.py restore `
-  --archive backups\synthetic-demo.coval `
-  --database <clean-synthetic-restore-path>\coval_health.sqlite `
-  --acknowledge-synthetic-only-unencrypted
-```
-
-The v1 archive is intentionally marked `encryption: none` and every writing CLI
-requires an explicit synthetic-only acknowledgement. It is a tested portability/
-recovery foundation for demo data only. Even if the storage location is separately
-encrypted, this build and vault v1 remain prohibited for real family/patient data
-until every threat-model gate passes.
-
-## Key Engineering Decisions
-
-- [ADR 0001](docs/adr/0001-capture-first-leased-processing.md): persist source before inference; run the provider outside the SQLite write transaction; attach only with a live lease token.
-- [ADR 0002](docs/adr/0002-review-before-canonical-memory.md): machine candidates never enter the timeline without review; edits and undo append versions.
-- [ADR 0003](docs/adr/0003-model-gates-over-model-optimism.md): a connected model is not promoted when frozen safety/comparator gates fail.
-- [ADR 0004](docs/adr/0004-vault-v1-is-portability-not-privacy.md): tested recovery is kept separate from encryption/authenticity claims.
-
-## Validation
-
-```powershell
-cd <repo-root>
 powershell -ExecutionPolicy Bypass -File scripts\run_local_quality.ps1
 ```
 
-Use `-Install` to install dependencies and `-SkipBrowser` to omit Playwright.
-The standard entry runs policy checks, backend/API/process-restart tests,
-frontend lint/typecheck/build, and browser E2E. The longer research smoke suite is:
+该脚本覆盖后端/API、前端 lint/类型/构建和浏览器 E2E；可用 `-Install` 安装依赖，或用 `-SkipBrowser` 跳过浏览器。备份/恢复命令和限制见 [架构与运行说明](docs/ARCHITECTURE.md)和 [vault ADR](docs/adr/0004-vault-v1-is-portability-not-privacy.md)。
 
-```powershell
-cd <repo-root>
-powershell -ExecutionPolicy Bypass -File scripts\run_workflow_checks.ps1
-```
+### 还没有做完的事
 
-The optional model runtime is isolated from the lightweight web/test environment:
+- 真实照片/PDF OCR、语音 ASR、提醒 worker、家庭周报 worker 和医生 PDF；界面中的相关入口目前是设计/占位，不是交付承诺。
+- 面向真实家庭资料的完整数据库及 WAL 加密、密钥托管与恢复、认证、加密备份、可验证删除，以及固定安全的 SQLite 运行时。[威胁模型](docs/THREAT_MODEL.md)和 `COVAL_REAL_DATA_MODE=1` 的 fail-closed 门禁会阻止提前宣称可用。
+- RAG 目前只有 7 篇片段、8 个查询的检索冒烟测试；不是成熟的医学问答。GGUF/llama.cpp 也只有接口，未完成实际部署和基准测试。
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\setup_local_model_runtime.ps1
-$env:COVAL_MODEL_PROVIDER = "transformers_adapter"
-$env:COVAL_MODEL_BASE_PATH = "<local-model-path>"
-$env:COVAL_MODEL_ADAPTER_PATH = "<local-adapter-path>"
-$env:COVAL_TRANSFORMERS_LOAD_IN_4BIT = "true"
-```
+## English: the product and the engineering story
 
-Model providers require explicit local paths, force Hugging Face offline mode,
-and never fall back silently to mock. `scripts/benchmark_local_provider.py`
-adds a non-loopback socket guard for the fixed synthetic latency/quality run.
-An arbitrary local path is deliberately recorded as identity-unverified; it is
-not labeled as the historical v2 candidate until a pinned full-file identity
-manifest exists. Historical v2 identity and measurements live only in the
-curated public evidence summary.
-`transformers_base` is an adapter-off causal benchmark only;
-`scripts/compare_local_inference.py` compares it with mock, local v2, and the
-recorded historical v2 metrics.
+Health information accumulates in reports, conversations, home measurements, and scattered notes. Coval HeYi aims to give a family a durable, locally controlled memory of **what was actually recorded, when, and from which source**. The workflow preserves the original text first, proposes structured facts, asks a person to review them, and only then adds them to the timeline. Its doctor-facing brief is for preparing a visit, not for medical decisions.
 
-## Model And Eval Status
+The interesting engineering choice is that the model is replaceable, but the memory and safety contracts are not. Capture survives provider failure; leases and compare-and-swap checks reject stale retries; sources are immutable; approval, edits, and undo produce append-only versions. A deterministic safety layer can escalate, while an unapproved model candidate cannot silently become the product default. The local vault is tested for integrity and restore, but explicitly remains **unencrypted**.
 
-Historical evidence-backed candidate:
+The LoRA work is a measured negative result, not a claim of clinical improvement. A Qwen2.5-7B LoRA v2 adapter was trained on 20 synthetic training rows, with 6 validation rows, and integrated in a historical local provider run. Re-enabling a local model requires pinned full-file model and adapter identity. Synthetic, product-shaped evaluation found no extraction gain on two slices, a regression on one, and unacceptable false refusals; a later prompt candidate also failed. The default remains the labeled deterministic `mock-rules-v2` provider. The earlier attractive scores were corrected after discovering prompt-context leakage. See the [experiment log](docs/experiment_log.md), [error analysis](docs/error_analysis.md), and [model evidence](docs/PHASE_2B_SAFETY_INTENT.md).
 
-```text
-Qwen/Qwen2.5-7B-Instruct + LoRA SFT v2 + deterministic summary template
-```
+For a quick synthetic demo, use the PowerShell commands above. For technical review, start with the [90-second demo script](docs/DEMO_90S.md), [current-state matrix](docs/CURRENT_STATE.md), [architecture](docs/ARCHITECTURE.md), [threat model](docs/THREAT_MODEL.md), and [claim ledger](docs/CLAIM_LEDGER.md). The CI workflow runs backend, frontend, and Chromium browser checks; passing tests demonstrate the synthetic prototype, **not** clinical safety or readiness for real family data.
 
-Production-equivalent local NF4 regression results (`n=10`, `n=4`, and `n=6`
-respectively; development slices, not an independent test set or clinical validation):
+**Resume-safe description:** Built a synthetic-only local family-health memory prototype with immutable source provenance, capture-first recovery, review-before-save, append-only versions, tested backup/restore, deterministic safety controls, conservative FHIR R4 export, and evaluation gates that rejected unsafe model candidates.
 
-| Slice | Base NF4 F1 | Adapter NF4 F1 | Adapter - base |
-| --- | ---: | ---: | ---: |
-| synthetic_v0 | 0.6767 | 0.6767 | 0.0000 |
-| medication_contrast_v0 | 0.6897 | 0.6897 | 0.0000 |
-| safety_onset_edge_v1_1 | 0.6939 | 0.6222 | -0.0717 |
+## Repository map / 仓库导览
 
-On the separate 24-row blind confirmation set, both old-prompt arms refused 8
-of 16 non-refusal cases (50% false refusal). The adapter also falsely refused
-1/5 safe adversarial cases. These product-context results do not establish
-adapter superiority and block deployment.
+- `apps/coval-health-web/` — Next.js 界面 / family-facing web UI.
+- `src/serve/`, `src/health_memory/` — FastAPI、SQLite、迁移和版本化记忆 / API and durable memory.
+- `eval/`, `train/`, `artifacts/public/` — 合成评测、训练入口和公开证据 / synthetic evaluation, training entry points, and curated receipts.
+- `docs/` — 决策记录、实验日志、错误分析、威胁模型 / design decisions, lab notes, failure analysis, and privacy gates.
 
-Decision: **BLOCKED**. Earlier `0.7656 / 0.9032 / 0.8261` values came from
-context-contaminated development prompts containing semantic eval IDs and
-gold-like input types. They remain documented as a correction, not as headline
-quality evidence.
+公开演示和评测只用合成/公开安全数据；不要提交密钥、真实家庭资料、数据库、模型权重或本地研究输出。
 
-SFT v3 was trained and evaluated, but it is not the default candidate. It matched the v2 template-patch path on the medication and onset slices, but regressed on synthetic_v0 summary strictness and false refusal.
-
-See:
-
-- `docs/CURRENT_STATE.md`
-- `docs/DURABLE_PRODUCT_SPINE.md`
-- `docs/PRODUCTIZATION_ROADMAP_2026_08.md`
-- `docs/PHASE_0_1_INTERNAL_REVIEW.md`
-- `docs/PHASE_2_LOCAL_INFERENCE.md`
-- `docs/INSPIRATION_AND_LICENSES.md`
-- `docs/experiment_log.md`
-- `docs/error_analysis.md`
-- `docs/INTERVIEW_DEFENSE.md`
-- `docs/PHASE_2_LOCAL_INFERENCE.md`
-- `docs/PHASE_2B_SAFETY_INTENT.md`
-- `artifacts/public/phase2_local_inference/evidence_summary.json`
-- `artifacts/public/phase2b_safety_intent/evidence_summary.json`
-
-## Honest Current Scope
-
-This repo is intentionally framed as an evaluation-first product prototype, not a production medical agent.
-
-- The LoRA experiment is a failure-driven small-sample SFT. `sft_v2` has 26 synthetic hand-authored rows: 20 train and 6 validation, and the run completed only 3 optimization steps. Production-equivalent local evaluation did not establish adapter superiority and exposed false-refusal regressions, so the candidate was not promoted.
-- The local product layer is a Next.js/FastAPI/SQLite prototype over synthetic examples. Its durable path now has migrations, capture-before-inference, retry leases, immutable sources, candidate approval, versions, idempotency, audit/safety evidence, process-restart recovery, and browser-tested undo.
-- The default structuring provider is still `mock-rules-v2`. The API now has
-  explicit `transformers_base`, `transformers_adapter`, and `llama_cpp`
-  boundaries. Real local v2 NF4 inference and browser/SQLite E2E are connected
-  and measured. The frozen same-local unquantized comparator does not fit this
-  GPU, so that quantization gate is not evaluable; false refusals and
-  descriptive historical gaps block deployment, and the candidate is therefore
-  not the default. Real OCR/ASR,
-  reminder workers, daily check-ins, weekly reports, PDFs, and encrypted backups
-  are not implemented. A checksum-verified **unencrypted** local vault backup,
-  clean-path restore, and FHIR R4 export are implemented and regression-tested.
-- It is not yet a complete RAG agent. Phase 6 has started with a retrieval-first smoke harness over a tiny synthetic/public-safe corpus: 7 source snippets, 8 labeled queries, Recall@1/3 and MRR, plus no-answer calibration.
-- It is not yet a llama.cpp/GGUF local-inference deployment. The Transformers/PEFT NF4 path is real; the GGUF boundary remains unexecuted.
-
-Safe resume wording after clean-clone CI passes: `Built a synthetic-only local family-health memory platform with immutable source provenance, capture-first failure recovery, review-before-save, append-only versions, tested backup/restore, deterministic safety controls, conservative FHIR R4 mapping, and model gates that rejected unsafe candidates.`
-
-Avoid overclaiming: do not describe the current project as a large-scale medical dataset, a deployed clinical decision system, a production RAG agent, or a completed GGUF/llama.cpp local runtime.
-
-## Phase 6 RAG Status
-
-Phase 6 follows the same lesson as the earlier rageval work: retrieval quality is measured before generation is trusted.
-
-Current scaffold:
-
-- Corpus: `data/public/rag_v0/corpus.jsonl`
-- Gold queries: `eval/rag/gold_v0.jsonl`
-- Runner: `scripts/run_rag_retrieval_eval.py`
-- Metrics: `results/rag_v0/metrics.json`
-
-Current smoke result on the tiny bilingual representation set:
-
-| Metric | Value |
-| --- | ---: |
-| Corpus size | 7 |
-| Query count | 8 |
-| Recall@1 | 1.0000 |
-| Recall@3 | 1.0000 |
-| MRR | 1.0000 |
-| No-answer accuracy | 1.0000 |
-
-These numbers are only a scaffold sanity check. The next real RAG work is to expand public-resource evidence, add harder held-out queries, compare lexical/dense/hybrid retrieval, and then evaluate citation faithfulness and unsupported claims.
-
-## Hugging Face Upload Flow
-
-Do not paste or commit tokens. Log in interactively.
-
-Local CLI check:
-
-```powershell
-cd <repo-root>
-powershell -ExecutionPolicy Bypass -File scripts\hf_local_login.ps1
-powershell -ExecutionPolicy Bypass -File scripts\hf_local_login.ps1 -WhoamiOnly
-```
-
-Adapter upload should be run where the adapter files exist. On Narval, after opening the WSL SSH ControlMaster session:
-
-```bash
-cd /home/syin94/scratch/lora_health/code
-source /home/syin94/scratch/lora_health/venv/bin/activate
-hf auth login
-export HF_REPO_ID="Jeremyyy1225/coval-heyi-qwen2p5-7b-lora-v2"
-bash scripts/prepare_hf_adapter_upload.sh
-```
-
-Recommended initial visibility:
-
-```text
-GitHub: private
-Hugging Face: private or gated
-License: no open-source license yet
-```
-
-This creates a public/private trace without granting automatic reuse rights before the project packaging is mature.
-
-## GitHub Packaging Notes
-
-Before pushing:
-
-- Keep `.env`, tokens, private keys, real family records, local databases, checkpoints, and adapter weights out of Git.
-- Commit source code, configs, docs, synthetic/public eval fixtures, small reproducibility manifests, and UI screenshots under `docs/assets`.
-- Do not commit `data/private/`, `*.real.*`, `*.pii.*`, `graphify-out/`, `node_modules/`, `.next/`, or model weight files.
-
-Suggested pre-push checks:
-
-```powershell
-git status --short
-powershell -ExecutionPolicy Bypass -File scripts\run_workflow_checks.ps1
-cd apps\coval-health-web
-npm.cmd run typecheck
-npm.cmd run lint
-npm.cmd run build
-```
-
-## Repository Map
-
-- `apps/coval-health-web` - Next.js family-facing web UI.
-- `src/serve/coval_health_api.py` - compatibility entrypoint for the durable local API.
-- `src/serve/memory_api.py` - persistent health-memory routes and contracts.
-- `src/health_memory/` - migrations, SQLite invariants, versions, idempotency, and projections.
-- `src/product_spine.py` - replace-on-run synthetic evaluation smoke tool, not canonical product storage.
-- `eval/` - gold sets and metrics.
-- `train/` - SFT dataset builders and training entry points.
-- `scripts/` - Narval, Hugging Face, eval, and workflow utilities.
-- `docs/` - plan, packaging notes, experiment log, and error analysis.
-
-## Project Positioning
-
-This is one project with two faces:
-
-1. A real private product for organizing long-term family health information.
-2. A portfolio-grade LoRA evaluation project with concrete metrics, leakage correction, failure analysis, and model-rejection decisions.
-
-The research contribution is not a generic chatbot. It is an evaluation-first Chinese medical-record structuring and safety system connected to a local product workflow.
+The demos and evaluations use synthetic/public-safe data only. No open-source license is granted yet; contact the author before reusing code or assets.
